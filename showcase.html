@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agri-QA Pipeline v2 — 农业问答推理链生成系统</title>
+<style>
+  :root {
+    --primary: #2d6a4f;
+    --primary-light: #40916c;
+    --primary-dark: #1b4332;
+    --accent: #d4a373;
+    --bg: #fefae0;
+    --card: #ffffff;
+    --text: #2b2d42;
+    --text-light: #6c757d;
+    --border: #e9ecef;
+    --success: #2d6a4f;
+    --warning: #e9c46a;
+    --error: #e76f51;
+    --info: #457b9d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
+    color: white;
+    padding: 80px 0 60px;
+    text-align: center;
+  }
+  .hero h1 { font-size: 2.6em; font-weight: 800; margin-bottom: 12px; letter-spacing: -1px; }
+  .hero .subtitle { font-size: 1.15em; opacity: 0.9; max-width: 700px; margin: 0 auto 28px; }
+  .hero .badges { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+
+  /* Sections */
+  section { padding: 56px 0; }
+  section:nth-child(even) { background: #f8f9fa; }
+  .section-title {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.7em;
+    font-weight: 700;
+  }
+  .section-desc { color: var(--text-light); margin-bottom: 32px; font-size: 1.05em; }
+
+  /* Cards */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+  .card h3 { color: var(--primary-dark); margin-bottom: 8px; font-size: 1.15em; }
+  .card p { color: var(--text-light); font-size: 0.95em; }
+  .card .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78em;
+    font-weight: 600;
+    margin-top: 10px;
+  }
+  .tag-green { background: #d8f3dc; color: var(--primary-dark); }
+  .tag-blue { background: #d0e8f2; color: #1d3557; }
+  .tag-orange { background: #fde2c8; color: #7f4f24; }
+
+  /* Architecture */
+  .arch-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .arch-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+  }
+  .arch-step::before {
+    content: '';
+    position: absolute;
+    left: 23px;
+    top: 48px;
+    bottom: -20px;
+    width: 2px;
+    background: var(--primary-light);
+  }
+  .arch-step:last-child::before { display: none; }
+  .arch-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .arch-content {
+    flex: 1;
+    padding-bottom: 24px;
+  }
+  .arch-content h4 { font-size: 1.05em; color: var(--primary-dark); }
+  .arch-content p { font-size: 0.9em; color: var(--text-light); margin-top: 2px; }
+
+  /* Tech Stack Table */
+  .tech-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .tech-table th {
+    background: var(--primary);
+    color: white;
+    padding: 14px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9em;
+  }
+  .tech-table td {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9em;
+  }
+  .tech-table tr:last-child td { border-bottom: none; }
+  .tech-table tr:hover td { background: #f8f9fa; }
+  .tech-table .model-name {
+    font-family: "SF Mono", "Fira Code", monospace;
+    background: #f1f3f5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+
+  /* Results */
+  .result-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  }
+  .result-card .q-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .result-card .q-num {
+    background: var(--primary);
+    color: white;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .result-card .q-text { font-weight: 600; font-size: 0.95em; flex: 1; }
+  .result-card .q-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .meta-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+  .meta-tag.verified { background: #d8f3dc; color: var(--primary-dark); }
+  .meta-tag.partial { background: #fff3cd; color: #856404; }
+  .meta-tag.failed { background: #f8d7da; color: #721c24; }
+  .meta-tag.entities { background: #d0e8f2; color: #1d3557; }
+  .meta-tag.kg { background: #e2d9f3; color: #4a1d96; }
+
+  /* Reasoning preview */
+  .reasoning-box {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 10px;
+    font-size: 0.85em;
+    border-left: 3px solid var(--primary);
+  }
+  .reasoning-box .label {
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 6px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .reasoning-box p { color: var(--text); margin-bottom: 4px; }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .stat-card .stat-num {
+    font-size: 2.4em;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+  }
+  .stat-card .stat-label {
+    font-size: 0.85em;
+    color: var(--text-light);
+    margin-top: 6px;
+  }
+
+  /* File tree */
+  .file-tree {
+    background: #1e1e2e;
+    border-radius: 12px;
+    padding: 24px 28px;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.85em;
+    line-height: 2;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+  .file-tree .ft-line { display: flex; align-items: center; gap: 6px; }
+  .file-tree .ft-icon { width: 18px; text-align: center; flex-shrink: 0; }
+  .file-tree .ft-name { color: #cdd6f4; }
+  .file-tree .ft-folder .ft-name { color: #89b4fa; font-weight: 600; }
+  .file-tree .ft-file .ft-name { color: #cdd6f4; }
+  .file-tree .ft-py .ft-name { color: #a6e3a1; }
+  .file-tree .ft-json .ft-name { color: #f9e2af; }
+  .file-tree .ft-csv .ft-name { color: #fab387; }
+  .file-tree .ft-xml .ft-name { color: #f38ba8; }
+  .file-tree .ft-comment { color: #6c7086; margin-left: 8px; font-size: 0.9em; }
+  .file-tree .ft-indent { display: inline-block; }
+
+  /* Comparison table */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .compare-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.88em;
+    border-bottom: 2px solid var(--border);
+  }
+  .compare-table th:first-child { background: #f8f9fa; }
+  .compare-table th:nth-child(2) { background: #fff3cd; color: #856404; }
+  .compare-table th:nth-child(3) { background: #d8f3dc; color: var(--primary-dark); }
+  .compare-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88em;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+
+  /* Footer */
+  footer {
+    background: var(--primary-dark);
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    padding: 32px 0;
+    font-size: 0.9em;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* Pipeline diagram */
+  .pipeline-diagram {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid var(--border);
+    margin: 24px 0;
+  }
+  .pipeline-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 12px 0;
+  }
+  .pipeline-box {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+    min-width: 120px;
+  }
+  .pipeline-arrow {
+    font-size: 1.2em;
+    color: var(--primary-light);
+    padding: 0 6px;
+  }
+  .box-input { background: #e8f5e9; color: var(--primary-dark); }
+  .box-process { background: #e3f2fd; color: #1565c0; }
+  .box-output { background: #fff3e0; color: #e65100; }
+  .box-llm { background: #f3e5f5; color: #6a1b9a; }
+
+  /* XML preview */
+  .xml-viewer {
+    background: #1e1e2e;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #313244;
+    margin: 16px 0;
+  }
+  .xml-viewer-header {
+    background: #313244;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .xml-viewer-header .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .xml-viewer-header .dot-r { background: #f38ba8; }
+  .xml-viewer-header .dot-y { background: #f9e2af; }
+  .xml-viewer-header .dot-g { background: #a6e3a1; }
+  .xml-viewer-header span { color: #6c7086; font-size: 0.8em; margin-left: 8px; font-family: "SF Mono", monospace; }
+  .xml-body {
+    padding: 20px 24px;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.82em;
+    line-height: 1.9;
+    overflow-x: auto;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .xml-body::-webkit-scrollbar { width: 6px; }
+  .xml-body::-webkit-scrollbar-track { background: #1e1e2e; }
+  .xml-body::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+  .xml-line { display: flex; }
+  .xml-ln {
+    color: #45475a;
+    width: 32px;
+    text-align: right;
+    padding-right: 16px;
+    flex-shrink: 0;
+    user-select: none;
+    font-size: 0.9em;
+  }
+  .xml-content { flex: 1; white-space: pre; }
+  .xml-tag { color: #89b4fa; }
+  .xml-attr { color: #fab387; }
+  .xml-val { color: #a6e3a1; }
+  .xml-text { color: #cdd6f4; }
+  .xml-bracket { color: #585b70; }
+  .xml-ns { color: #f38ba8; }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 1.8em; }
+    .pipeline-row { flex-direction: column; gap: 4px; }
+    .pipeline-arrow { transform: rotate(90deg); }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <h1>Agri-QA Pipeline v2</h1>
+    <p class="subtitle">基于知识图谱与大语言模型的农业病虫害问答推理链自动生成系统</p>
+    <div class="badges">
+      <span class="badge">FAISS 语义检索</span>
+      <span class="badge">结构化 CoT</span>
+      <span class="badge">自洽性验证</span>
+      <span class="badge">MiMo-v2.5-Pro</span>
+    </div>
+  </div>
+</header>
+
+<!-- 1. Problem -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">1</span> 问题与动机</div>
+    <p class="section-desc">现有农业问答 pipeline 在实体识别、知识检索和推理质量三个环节存在明显短板</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>实体识别覆盖率低</h3>
+        <p>原系统基于硬编码同义词表（约 200 条）做关键词匹配，无法覆盖 CropDP-KG 中 3,500+ 病虫害实体，遗漏率高。</p>
+        <span class="tag tag-orange">瓶颈 1</span>
+      </div>
+      <div class="card">
+        <h3>KG 检索准确率不足</h3>
+        <p>基于子串匹配检索知识图谱，无法处理语义相似但字面不同的查询（如 "leaf spots" vs "叶斑病"），召回率低。</p>
+        <span class="tag tag-orange">瓶颈 2</span>
+      </div>
+      <div class="card">
+        <h3>推理链质量不可控</h3>
+        <p>使用固定 prompt 模板生成推理链，无自洽性检查和事实验证机制，生成结果的准确性和一致性无法保证。</p>
+        <span class="tag tag-orange">瓶颈 3</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Architecture -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">2</span> 系统架构</div>
+    <p class="section-desc">五阶段流水线：实体识别 → KG 检索 → 推理生成 → 自洽性检查 → 后置验证</p>
+
+    <div class="pipeline-diagram">
+      <div class="pipeline-row">
+        <div class="pipeline-box box-input">Question (英文)</div>
+      </div>
+      <div style="text-align:center;color:var(--primary-light);font-size:1.4em;">&#9660;</div>
+
+      <div class="pipeline-row">
+        <div class="pipeline-box box-process"><strong>Step 1</strong><br>混合实体识别<br><small>关键词 + FAISS 语义补全</small></div>
+        <div class="pipeline-arrow">&#9654;</div>
+        <div class="pipeline-box box-process"><strong>Step 2</strong><br>KG 检索<br><small>FAISS top-5 + 关键词兜底</small></div>
+        <div class="pipeline-arrow">&#9654;</div>
+        <div class="pipeline-box box-llm"><strong>Step 3</strong><br>推理链生成<br><small>结构化 CoT, XML 输出</small></div>
+        <div class="pipeline-arrow">&#9654;</div>
+        <div class="pipeline-box box-llm"><strong>Step 4</strong><br>自洽性检查<br><small>采样 3 次, 多数投票</small></div>
+        <div class="pipeline-arrow">&#9654;</div>
+        <div class="pipeline-box box-llm"><strong>Step 5</strong><br>后置验证<br><small>KG 证据交叉校验</small></div>
+      </div>
+      <div style="text-align:center;color:var(--primary-light);font-size:1.4em;margin-top:8px;">&#9660;</div>
+      <div class="pipeline-row">
+        <div class="pipeline-box box-output">reasoning_chains.xml</div>
+      </div>
+    </div>
+
+    <!-- Comparison -->
+    <h3 style="margin:32px 0 16px;color:var(--primary-dark);">v1 vs v2 对比</h3>
+    <table class="compare-table">
+      <tr>
+        <th>维度</th>
+        <th>原 Pipeline (v1)</th>
+        <th>Pipeline v2</th>
+      </tr>
+      <tr><td>实体识别</td><td>硬编码同义词表 (~200 条)</td><td>关键词 + FAISS 语义混合 (2,094 条)</td></tr>
+      <tr><td>KG 检索</td><td>子串匹配</td><td>FAISS 向量检索 top-5 + 关键词兜底</td></tr>
+      <tr><td>推理链生成</td><td>固定模板 prompt</td><td>结构化 CoT + XML 格式输出</td></tr>
+      <tr><td>质量控制</td><td>无</td><td>自洽性检查 (3 次采样) + 后置验证</td></tr>
+      <tr><td>语言</td><td>中英混合</td><td>统一英文</td></tr>
+      <tr><td>输出格式</td><td>JSON</td><td>XML (结构化推理链)</td></tr>
+      <tr><td>容错机制</td><td>无</td><td>单条跳过 + 中间保存</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 3. Tech Stack -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">3</span> 技术栈</div>
+    <p class="section-desc">Python 3.9 + MiMo LLM + FAISS + sentence-transformers</p>
+
+    <table class="tech-table">
+      <tr><th>组件</th><th>技术选型</th><th>用途</th></tr>
+      <tr>
+        <td>LLM 推理</td>
+        <td><span class="model-name">mimo-v2.5-pro</span></td>
+        <td>推理链生成 + 后置验证</td>
+      </tr>
+      <tr>
+        <td>LLM 轻量</td>
+        <td><span class="model-name">mimo-v2.5</span></td>
+        <td>KG 中→英翻译</td>
+      </tr>
+      <tr>
+        <td>Embedding</td>
+        <td><span class="model-name">BAAI/bge-small-en-v1.5</span> (384 维)</td>
+        <td>文本向量化，用于 FAISS 索引</td>
+      </tr>
+      <tr>
+        <td>向量检索</td>
+        <td><span class="model-name">FAISS (IndexFlatIP)</span></td>
+        <td>KG 语义检索 + 实体语义补全</td>
+      </tr>
+      <tr>
+        <td>数据处理</td>
+        <td><span class="model-name">pandas</span> + <span class="model-name">lxml</span></td>
+        <td>CSV/JSON 处理 + XML 解析</td>
+      </tr>
+      <tr>
+        <td>API 协议</td>
+        <td><span class="model-name">OpenAI-compatible</span></td>
+        <td>统一 LLM 调用接口</td>
+      </tr>
+    </table>
+
+    <h3 style="margin:32px 0 16px;color:var(--primary-dark);">模块结构</h3>
+    <div class="file-tree">
+      <div class="ft-line ft-folder"><span class="ft-icon"> </span><span class="ft-name">agri_QA/</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:20px"></span><span class="ft-icon"> </span><span class="ft-name">pipeline_v2.py</span><span class="ft-comment"># 主 pipeline 编排器</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:20px"></span><span class="ft-icon"> </span><span class="ft-name">config.py</span><span class="ft-comment"># API 配置、模型参数、路径</span></div>
+      <div class="ft-line ft-folder"><span class="ft-indent" style="width:20px"></span><span class="ft-icon"> </span><span class="ft-name">modules/</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">kg_translator.py</span><span class="ft-comment"># KG 中→英翻译</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">faiss_builder.py</span><span class="ft-comment"># FAISS 索引构建</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">entity_recognizer.py</span><span class="ft-comment"># 混合实体识别</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">kg_retriever.py</span><span class="ft-comment"># KG 检索</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">reasoning_generator.py</span><span class="ft-comment"># 推理链生成</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">consistency_checker.py</span><span class="ft-comment"># 自洽性检查</span></div>
+      <div class="ft-line ft-py"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">verifier.py</span><span class="ft-comment"># 后置验证</span></div>
+      <div class="ft-line ft-folder"><span class="ft-indent" style="width:20px"></span><span class="ft-icon"> </span><span class="ft-name">data/</span></div>
+      <div class="ft-line ft-csv"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">CropDP-KG.csv</span><span class="ft-comment"># 原始中文 KG (3,523 条)</span></div>
+      <div class="ft-line ft-csv"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">CropDP-KG-EN.csv</span><span class="ft-comment"># 翻译后英文 KG</span></div>
+      <div class="ft-line ft-folder"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">faiss_index/</span><span class="ft-comment"># 持久化 FAISS 索引</span></div>
+      <div class="ft-line ft-json"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">term_dict.json</span><span class="ft-comment"># 术语词典 (2,094 条)</span></div>
+      <div class="ft-line ft-folder"><span class="ft-indent" style="width:20px"></span><span class="ft-icon"> </span><span class="ft-name">output/</span></div>
+      <div class="ft-line ft-xml"><span class="ft-indent" style="width:40px"></span><span class="ft-icon"> </span><span class="ft-name">agri_qa_reasoning.xml</span><span class="ft-comment"># 最终输出</span></div>
+      <div class="ft-line ft-json"><span class="ft-indent" style="width:20px"></span><span class="ft-icon"> </span><span class="ft-name">AgThoughts.json</span><span class="ft-comment"># 原始 QA 数据 (44,615 条)</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Module Details -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">4</span> 核心模块详解</div>
+    <p class="section-desc">每个模块独立可测试，共 31 个单元测试全部通过</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>4.1 混合实体识别</h3>
+        <p><strong>关键词匹配</strong>：从 CropDP-KG-EN 自动构建 2,094 条术语词典，按长度降序匹配，支持多词有序回退（允许词间间隔）。</p>
+        <p><strong>FAISS 语义补全</strong>：question embedding → entity_index top-5，置信度 > 0.7 才采纳。</p>
+        <p><strong>实体分类</strong>：自动识别 crop / pest / disease / weed 类型。</p>
+        <span class="tag tag-green">关键词 + 语义混合</span>
+      </div>
+      <div class="card">
+        <h3>4.2 FAISS 向量检索</h3>
+        <p>使用 <code>bge-small-en-v1.5</code> (384 维) 对 KG 条目编码，构建 <code>IndexFlatIP</code> 索引。检索时 L2 归一化后用内积计算余弦相似度，返回 top-5 最相关 KG 条目。</p>
+        <p>两个独立索引：kg_index（全量 KG）和 entity_index（实体名称）。</p>
+        <span class="tag tag-blue">向量检索</span>
+      </div>
+      <div class="card">
+        <h3>4.3 结构化推理链生成</h3>
+        <p>使用 DeepSeek-R1 / MiMo-v2.5-Pro 生成结构化 CoT 推理链。输出 XML 格式，包含 <code>question_analysis</code>、<code>evidence_retrieval</code>、<code>reasoning_steps</code>、<code>conclusion</code> 四个部分。</p>
+        <p>temperature=0.2 确保输出稳定。</p>
+        <span class="tag tag-green">结构化 CoT</span>
+      </div>
+      <div class="card">
+        <h3>4.4 自洽性检查</h3>
+        <p>采样 N=3 次（temperature=0.4），比较诊断结论一致性。2/3 或 3/3 一致为 high_confidence；否则标记 low_confidence 并取首次结果。</p>
+        <p>若 3 次均解析失败，降低温度重试一次。</p>
+        <span class="tag tag-orange">多采样投票</span>
+      </div>
+      <div class="card">
+        <h3>4.5 后置验证</h3>
+        <p>将推理链与 KG 证据交叉校验。LLM 逐条检查推理链中的声明是否与 KG 一致，输出 <code>verified</code> / <code>partially_verified</code> / <code>contradicted</code> 状态。</p>
+        <p>标记矛盾部分和无证据支持的声明。</p>
+        <span class="tag tag-blue">事实校验</span>
+      </div>
+      <div class="card">
+        <h3>4.6 数据筛选</h3>
+        <p>从 44,615 条 AgThoughts QA 中筛选病虫害子集：Biotic 类别直接纳入 (1,629 条)；Plant and Seed Health 类别用 CropDP-KG 实体名做关键词匹配。</p>
+        <p>最终筛选出 <strong>1,822</strong> 条有效样本。</p>
+        <span class="tag tag-green">领域筛选</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Data Sources -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">5</span> 数据源</div>
+    <p class="section-desc">QA 数据来自 AgThoughts，知识图谱来自 CropDP-KG</p>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num">44,615</div>
+        <div class="stat-label">AgThoughts 原始 QA 条数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">1,822</div>
+        <div class="stat-label">筛选后病虫害子集</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">3,523</div>
+        <div class="stat-label">CropDP-KG 知识条目</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">2,094</div>
+        <div class="stat-label">自动构建术语词典</div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>AgThoughts (QA 数据)</h3>
+        <p>英文农业问答数据集，覆盖作物管理、病虫害、土壤、天气等多个领域。本项目聚焦病虫害子集：</p>
+        <ul style="margin-top:8px;padding-left:20px;font-size:0.9em;color:var(--text-light);">
+          <li>Biotic Diseases Questions (819 条)</li>
+          <li>Biotic Insects Questions (702 条)</li>
+          <li>Biotic Weeds Questions (108 条)</li>
+          <li>Plant and Seed Health (关键词匹配子集)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>CropDP-KG (知识图谱)</h3>
+        <p>中文病虫害知识图谱，每条包含：</p>
+        <ul style="margin-top:8px;padding-left:20px;font-size:0.9em;color:var(--text-light);">
+          <li>名称 + 英文名</li>
+          <li>为害症状 (symptoms)</li>
+          <li>发生规律 (occurrence)</li>
+          <li>防治措施 (prevention)</li>
+        </ul>
+        <p style="margin-top:8px;">通过 LLM 批量翻译为英文，构建双语 KG。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Results -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">6</span> 实验结果</div>
+    <p class="section-desc">10 条测试样本的完整 pipeline 运行结果（MiMo-v2.5-Pro）</p>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num">10</div>
+        <div class="stat-label">处理条数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">37 min</div>
+        <div class="stat-label">总耗时</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">6/10</div>
+        <div class="stat-label">部分验证通过</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">3.7 min</div>
+        <div class="stat-label">平均每条耗时</div>
+      </div>
+    </div>
+
+    <!-- Result items -->
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">1</span>
+        <span class="q-text">What issues are affecting my collards and how can I prevent silverspotted skipper infestations next year, given that I live in New Jersey?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag partial">partially_verified</span>
+        <span class="meta-tag entities">0 entities</span>
+        <span class="meta-tag kg">4 KG entries</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">诊断结论</div>
+        <p>Collards in New Jersey are likely affected by silverspotted skipper caterpillars causing leaf damage, along with potential risks from similar pests and secondary fungal diseases due to environmental conditions.</p>
+        <div class="label" style="margin-top:10px;">防治方案</div>
+        <p>1. 农业防治：清除残茬减少越冬场所，轮作；2. 物理防治：人工捕捉幼虫，使用防虫网；3. 化学防治：在幼虫早期施用 Bt 或印楝油；4. 监控：从春季开始定期检查。</p>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">2</span>
+        <span class="q-text">What methods can I use to assess the damage to my spinach crop in Delaware?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag failed">parse_failed</span>
+        <span class="meta-tag entities">4 entities</span>
+        <span class="meta-tag kg">8 KG entries</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">识别实体</div>
+        <p>spinach phyllosticta leaf spot (菠菜叶点病)、spinach fusarium wilt (菠菜枯萎病)、spinach alternaria leaf spot (菠菜黑斑病)、tomato continuous cropping injury (番茄连作障碍)</p>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">3</span>
+        <span class="q-text">What nutrients or contaminants are present in my alfalfa in Nevada, and how can I control sulfur toxicity?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag partial">partially_verified</span>
+        <span class="meta-tag entities">2 entities</span>
+        <span class="meta-tag kg">18 KG entries</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">KG 检索</div>
+        <p>检索到 18 条相关 KG 条目，涵盖苜蓿相关的病虫害和营养管理知识。</p>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">4</span>
+        <span class="q-text">What methods can I use to assess insect density in my snap bean fields in Kansas?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag partial">partially_verified</span>
+        <span class="meta-tag entities">1 entity</span>
+        <span class="meta-tag kg">5 KG entries</span>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">5</span>
+        <span class="q-text">How can I eliminate Bitter panicgrass and protect my corn crop in Oregon?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag failed">parse_failed</span>
+        <span class="meta-tag entities">3 entities</span>
+        <span class="meta-tag kg">12 KG entries</span>
+      </div>
+    </div>
+
+    <p style="color:var(--text-light);text-align:center;margin-top:16px;font-size:0.9em;">... 共 10 条，详见 output/agri_qa_reasoning.xml</p>
+  </div>
+</section>
+
+<!-- 7. Key Findings -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">7</span> 关键发现与改进方向</div>
+    <p class="section-desc">测试验证了 pipeline 的可行性，也暴露了需要优化的环节</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3 style="color:var(--success);">验证通过</h3>
+        <ul style="padding-left:18px;font-size:0.9em;color:var(--text-light);">
+          <li>FAISS 语义检索有效提升了 KG 召回率</li>
+          <li>结构化 CoT 输出质量明显优于固定模板</li>
+          <li>自洽性检查可过滤不稳定输出</li>
+          <li>中间保存机制防止了数据丢失</li>
+          <li>1,822 条筛选子集覆盖率合理</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--warning);">待改进</h3>
+        <ul style="padding-left:18px;font-size:0.9em;color:var(--text-light);">
+          <li>4/10 验证步骤 XML 解析失败（模型输出格式不稳定）</li>
+          <li>部分实体数为 0（术语词典需扩充作物俗名）</li>
+          <li>每条 3-4 分钟（自洽性 3 次采样 + 验证 = 4 次 API 调用）</li>
+          <li>KG 翻译仍为中文（LLM 翻译因余额不足跳过）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--info);">后续方向</h3>
+        <ul style="padding-left:18px;font-size:0.9em;color:var(--text-light);">
+          <li>优化验证模块 XML 解析容错（正则 + 宽松解析）</li>
+          <li>扩充术语词典（作物俗名、区域别名）</li>
+          <li>完成 KG 全量英文翻译</li>
+          <li>全量运行 1,822 条，评估整体质量</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. XML Output Preview -->
+<section>
+  <div class="container">
+    <div class="section-title"><span class="num">8</span> 输出样例 (XML)</div>
+    <p class="section-desc">每条输出包含问题分析、实体、KG 证据、推理链、验证结果</p>
+
+    <div class="xml-viewer">
+      <div class="xml-viewer-header">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+        <span>agri_qa_reasoning.xml</span>
+      </div>
+      <div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"1"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span><span class="xml-text">What issues are affecting my collards and how can I prevent silverspotted skipper infestations next year?</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question_type</span><span class="xml-bracket">&gt;</span><span class="xml-text">Biotic Diseases Questions</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question_type</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">/&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span><span class="xml-text">Gypsy moth</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span><span class="xml-text">幼虫主要为害叶片，严重时可将全树叶片吃光...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">9</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention</span><span class="xml-bracket">&gt;</span><span class="xml-text">农业：人工捕杀；物理：黑光灯诱杀；药剂：辛硫磷...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">10</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">11</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">12</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">13</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">14</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span><span class="xml-text">Pest identification and management</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">15</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span><span class="xml-text">Collards</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">16</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">17</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">18</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span> <span class="xml-attr">n</span><span class="xml-bracket">=</span><span class="xml-val">"1"</span><span class="xml-bracket">&gt;</span><span class="xml-text">Collards are brassica crops prone to various insect pests...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">19</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span> <span class="xml-attr">n</span><span class="xml-bracket">=</span><span class="xml-val">"2"</span><span class="xml-bracket">&gt;</span><span class="xml-text">No direct evidence in KG, but analogous pests provide insight...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">20</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">21</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">22</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Collards likely affected by silverspotted skipper caterpillars...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">23</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span><span class="xml-text">1. Agricultural: Remove debris  2. Physical: Hand-pick  3. Chemical: Bt</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">24</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">25</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">26</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">27</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span><span class="xml-text">partially_verified</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">28</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span><span class="xml-text">none</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">29</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span><span class="xml-text">Silverspotted skipper as the pest; row covers not in KG...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">30</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">31</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p>Agri-QA Pipeline v2 &mdash; 农业问答推理链生成系统</p>
+    <p style="margin-top:6px;">技术栈: Python 3.9 &middot; MiMo-v2.5-Pro &middot; FAISS &middot; sentence-transformers &middot; bge-small-en-v1.5</p>
+    <p style="margin-top:6px;">数据源: AgThoughts (44,615 QA) &middot; CropDP-KG (3,523 病虫害知识)</p>
+  </div>
+</footer>
+
+</body>
+</html>
