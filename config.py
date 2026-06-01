@@ -1,13 +1,13 @@
 """Pipeline v2 configuration — all constants in one place."""
 
-# --- LLM API (Gitee AI OpenAI-compatible) ---
-API_BASE_URL = "https://ai.gitee.com/v1"
-API_KEY = "VEKQW2FENKYIPYBLFD0CXHC1TPAQPOSBGSWIGP1E"
+# --- LLM API (Mimo Token Plan) ---
+API_BASE_URL = "https://token-plan-cn.xiaomimimo.com/v1"
+API_KEY = "tp-coc27q9qov5vmpxux47np1vydcwk7fnv23z97v1cl8y4pgyy"
 
 # Model assignments
-LLM_MODEL_GENERATE = "DeepSeek-R1"       # Reasoning chain generation
-LLM_MODEL_TRANSLATE = "DeepSeek-V3-Flash"  # KG translation (lightweight)
-LLM_MODEL_VERIFY = "DeepSeek-R1"         # Post-verification
+LLM_MODEL_GENERATE = "mimo-v2.5-pro"     # Reasoning chain generation
+LLM_MODEL_TRANSLATE = "mimo-v2.5"        # KG translation (lightweight)
+LLM_MODEL_VERIFY = "mimo-v2.5-pro"       # Post-verification
 
 # --- Embedding ---
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
