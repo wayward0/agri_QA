@@ -49,10 +49,10 @@ def format_kg_context(entries: list[dict]) -> str:
     parts = []
     for i, e in enumerate(entries, 1):
         parts.append(
-            f"[KG Entry {i}] {e.get('name_en', 'Unknown')}\n"
-            f"  Symptoms: {e.get('symptoms', 'N/A')}\n"
-            f"  Occurrence: {e.get('occurrence', 'N/A')}\n"
-            f"  Prevention: {e.get('prevention', 'N/A')}"
+            f"[KG Entry {i}] {str(e.get('name_en', 'Unknown'))}\n"
+            f"  Symptoms: {str(e.get('symptoms', 'N/A'))}\n"
+            f"  Occurrence: {str(e.get('occurrence', 'N/A'))}\n"
+            f"  Prevention: {str(e.get('prevention', 'N/A'))}"
         )
     return "\n\n".join(parts)
 
@@ -80,8 +80,8 @@ def _parse_faiss_results(faiss_results: list[dict], kg_entries: list[dict]) -> l
     matched = []
     for entry in kg_entries:
         entry_text = (
-            f"Name: {entry.get('name_en', '')} | "
-            f"Symptoms: {entry.get('symptoms', '')[:30]}"
+            f"Name: {str(entry.get('name_en', ''))} | "
+            f"Symptoms: {str(entry.get('symptoms', ''))[:30]}"
         ).lower()
         for prefix, score in faiss_texts.items():
             if prefix in entry_text or entry_text[:50] in prefix:
@@ -91,6 +91,6 @@ def _parse_faiss_results(faiss_results: list[dict], kg_entries: list[dict]) -> l
 
 
 def load_kg_entries(kg_en_path: str = config.PATH_CROPDP_KG_EN) -> list[dict]:
-    """Load translated KG as list of dicts."""
-    df = pd.read_csv(kg_en_path)
+    """Load translated KG as list of dicts. NaN values are converted to empty strings."""
+    df = pd.read_csv(kg_en_path).fillna("")
     return df.to_dict("records")

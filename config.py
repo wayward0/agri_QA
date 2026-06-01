@@ -33,7 +33,7 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 FAISS_INDEX_DIR = os.path.join(DATA_DIR, "faiss_index")
 
-PATH_CROPDP_KG = os.path.join(DATA_DIR, "CropDP-KG.csv")
+PATH_CROPDP_KG = os.path.join(BASE_DIR, "CropDP-KG.csv")
 PATH_CROPDP_KG_EN = os.path.join(DATA_DIR, "CropDP-KG-EN.csv")
 PATH_TERM_DICT = os.path.join(DATA_DIR, "term_dict.json")
 PATH_AGTHOUGHTS = os.path.join(BASE_DIR, "AgThoughts.json")
