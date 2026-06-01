@@ -207,6 +207,17 @@
     flex-shrink: 0;
   }
   .result-card .q-text { font-weight: 600; font-size: 0.95em; flex: 1; }
+  .result-card .xml-toggle { margin-top: 12px; }
+  .result-card .xml-toggle summary {
+    cursor: pointer; font-size: 0.85em; color: var(--info);
+    padding: 6px 0; user-select: none; list-style: none;
+  }
+  .result-card .xml-toggle summary::-webkit-details-marker { display: none; }
+  .result-card .xml-toggle summary::before { content: "▸ "; }
+  .result-card .xml-toggle[open] summary::before { content: "▾ "; }
+  .result-card .xml-toggle .xml-mini { margin-top: 4px; font-size: 0.82em; }
+  .result-card .xml-toggle .xml-mini .xml-viewer-header { padding: 4px 10px; }
+  .result-card .xml-toggle .xml-mini .xml-body { max-height: 320px; overflow-y: auto; }
   .result-card .q-meta {
     display: flex;
     gap: 8px;
@@ -705,7 +716,7 @@
     <div class="result-card">
       <div class="q-header">
         <span class="q-num">1</span>
-        <span class="q-text">What issues are affecting my collards and how can I prevent silverspotted skipper infestations next year, given that I live in New Jersey?</span>
+        <span class="q-text">What issues are affecting my collards and how can I prevent silverspotted skipper infestations next year?</span>
       </div>
       <div class="q-meta">
         <span class="meta-tag partial">partially_verified</span>
@@ -714,10 +725,22 @@
       </div>
       <div class="reasoning-box">
         <div class="label">诊断结论</div>
-        <p>Collards in New Jersey are likely affected by silverspotted skipper caterpillars causing leaf damage, along with potential risks from similar pests and secondary fungal diseases due to environmental conditions.</p>
-        <div class="label" style="margin-top:10px;">防治方案</div>
-        <p>1. 农业防治：清除残茬减少越冬场所，轮作；2. 物理防治：人工捕捉幼虫，使用防虫网；3. 化学防治：在幼虫早期施用 Bt 或印楝油；4. 监控：从春季开始定期检查。</p>
+        <p>Collards likely affected by silverspotted skipper caterpillars causing leaf damage, along with potential risks from similar pests and secondary fungal diseases.</p>
       </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #1</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"1"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span><span class="xml-text">What issues are affecting my collards...?</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">/&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">4 entries: Gypsy moth, Clerck's snowy bentwing moth, sixspotted buprestid, Tomato Helminthosporium leafspot</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Silverspotted skipper caterpillars causing leaf damage...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span><span class="xml-text">Agricultural + Physical + Chemical + Monitoring</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">9</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">partially_verified | contradictions: none</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">10</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
     </div>
 
     <div class="result-card">
@@ -732,8 +755,20 @@
       </div>
       <div class="reasoning-box">
         <div class="label">识别实体</div>
-        <p>spinach phyllosticta leaf spot (菠菜叶点病)、spinach fusarium wilt (菠菜枯萎病)、spinach alternaria leaf spot (菠菜黑斑病)、tomato continuous cropping injury (番茄连作障碍)</p>
+        <p>spinach phyllosticta leaf spot, spinach fusarium wilt, spinach alternaria leaf spot, tomato continuous cropping injury</p>
       </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #2</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"2"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span><span class="xml-text">4 diseases: spinach phyllosticta, fusarium wilt, alternaria, tomato continuous cropping</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">8 entries: damping off, Fusarium wilt, Phyllosticta, Alternaria, etc.</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Visual inspection + environmental monitoring + soil/pathogen testing</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">parse_failed</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
     </div>
 
     <div class="result-card">
@@ -747,36 +782,247 @@
         <span class="meta-tag kg">18 KG entries</span>
       </div>
       <div class="reasoning-box">
-        <div class="label">KG 检索</div>
-        <p>检索到 18 条相关 KG 条目，涵盖苜蓿相关的病虫害和营养管理知识。</p>
+        <div class="label">诊断结论</div>
+        <p>Alfalfa may be affected by alfalfa plant bug; sulfur toxicity control involves soil testing, leaching, and lime amendments.</p>
       </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #3</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"3"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span><span class="xml-text">alfalfa plant bug, snake-eye disease</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">18 entries across alfalfa, banana, pepper, tea, etc.</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">partially_verified | contradictions: Entry 9 is strawberry, not alfalfa</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
     </div>
 
     <div class="result-card">
       <div class="q-header">
         <span class="q-num">4</span>
-        <span class="q-text">What methods can I use to assess insect density in my snap bean fields in Kansas?</span>
+        <span class="q-text">What methods can I use to assess insect density in my snap beans in Tennessee?</span>
       </div>
       <div class="q-meta">
         <span class="meta-tag partial">partially_verified</span>
         <span class="meta-tag entities">1 entity</span>
-        <span class="meta-tag kg">5 KG entries</span>
+        <span class="meta-tag kg">4 KG entries</span>
       </div>
+      <div class="reasoning-box">
+        <div class="label">诊断结论</div>
+        <p>Bean pod borer causing damage through larval feeding. Assessment: visual inspection + black light traps + sampling for density estimation.</p>
+      </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #4</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"4"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span><span class="xml-text">bean pod borer (豆荚野螟)</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">4 entries: Bean pod borer, Limabean pod borer, soybean pod borer</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Bean pod borer — visual inspection + black light traps + sampling</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">partially_verified | contradictions: none</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
     </div>
 
     <div class="result-card">
       <div class="q-header">
         <span class="q-num">5</span>
-        <span class="q-text">How can I eliminate Bitter panicgrass and protect my corn crop in Oregon?</span>
+        <span class="q-text">How can I eliminate Bitter panicgrass and protect my corn crop in Florida?</span>
       </div>
       <div class="q-meta">
         <span class="meta-tag failed">parse_failed</span>
         <span class="meta-tag entities">3 entities</span>
-        <span class="meta-tag kg">12 KG entries</span>
+        <span class="meta-tag kg">7 KG entries</span>
       </div>
+      <div class="reasoning-box">
+        <div class="label">识别实体</div>
+        <p>corn southern leaf blight (玉米小斑病), corn leaf aphid (玉米蚜), corn northern leaf blight (玉米大斑病)</p>
+      </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #5</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"5"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span><span class="xml-text">corn southern leaf blight, corn leaf aphid, corn northern leaf blight</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">7 entries: Asiatic corn borer, corn leaf aphid, zonate leaf spot, etc.</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Bitter panicgrass increases pest/disease risk via competition</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">parse_failed</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
     </div>
 
-    <p style="color:var(--text-light);text-align:center;margin-top:16px;font-size:0.9em;">... 共 10 条，详见 output/agri_qa_reasoning.xml</p>
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">6</span>
+        <span class="q-text">What organic methods can be used to control fall cankerworm in snap beans in Vermont?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag failed">parse_failed</span>
+        <span class="meta-tag entities">2 entities</span>
+        <span class="meta-tag kg">5 KG entries</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">识别实体</div>
+        <p>soybean pod borer (大豆食心虫), bean webworm (豆卷叶野螟)</p>
+      </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #6</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"6"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span><span class="xml-text">soybean pod borer, bean webworm</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">5 entries: Cotton leaf worm, Bean pod borer, soybean pod borer, bean webworm</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Organic control: crop rotation, tillage, manual removal, light traps</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">parse_failed</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
+    </div>
+
+    <div class="result-card" style="border-left: 3px solid var(--success);">
+      <div class="q-header">
+        <span class="q-num">7</span>
+        <span class="q-text">What methods can I use to prevent spiny looper infestation in my alfalfa field next year, given that I live in Minnesota?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag partial" style="background:rgba(166,227,169,0.2);color:var(--success);">partially_verified &#10003;</span>
+        <span class="meta-tag entities">2 entities</span>
+        <span class="meta-tag kg">7 KG entries</span>
+        <span class="meta-tag" style="background:rgba(166,227,169,0.15);color:var(--success);">0 contradictions</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">诊断结论</div>
+        <p>Spiny looper larvae causing defoliation in alfalfa, with lifecycle involving soil overwintering pupae. Prevention: crop rotation, residue removal, fall tillage, pheromone monitoring, and targeted insecticides.</p>
+        <div class="label" style="margin-top:10px;">验证结果</div>
+        <p>无矛盾声明，无未支撑声明 — 10 条中验证最干净的输出。</p>
+      </div>
+      <details class="xml-toggle" open><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #7 — best result</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"7"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span><span class="xml-text">What methods can I use to prevent spiny looper infestation in my alfalfa field next year...?</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entity</span> <span class="xml-attr">type</span><span class="xml-bracket">=</span><span class="xml-val">"disease"</span> <span class="xml-attr">name</span><span class="xml-bracket">=</span><span class="xml-val">"alfalfa plant bug"</span><span class="xml-bracket">&gt;</span><span class="xml-text">苜蓿盲蝽</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entity</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entity</span> <span class="xml-attr">type</span><span class="xml-bracket">=</span><span class="xml-val">"disease"</span> <span class="xml-attr">name</span><span class="xml-bracket">=</span><span class="xml-val">"alfalfa mosaic virus"</span><span class="xml-bracket">&gt;</span><span class="xml-text">辣椒苜蓿花叶病毒病</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entity</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span><span class="xml-text">Mugwort looper — larvae 6-9月, pupae overwinter in soil</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">9</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span><span class="xml-text">Alfalfa plant bug — 3-4 gen/year, agricultural + chemical control</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">10</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">11</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">12</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">13</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span><span class="xml-text">Pest prevention strategy</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">14</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span><span class="xml-text">Alfalfa</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">15</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">16</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">17</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">1. Spiny looper analogous to Mugwort looper in KG</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">18</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">2. Mugwort looper: larvae 6-9月, pupae overwinter in soil</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">19</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">3. Adapt to MN climate: cold winters affect overwintering pupae</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">20</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">4. Combine agricultural + biological + chemical controls</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">21</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">22</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">23</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Spiny looper larvae causing defoliation, overwintering as pupae in soil</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">24</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">25</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Crop rotation + residue removal + fall tillage</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">26</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Pheromone traps for adult monitoring</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">27</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Biological: parasitic wasps, avoid broad-spectrum insecticides</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">28</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Chemical: targeted pyrethroids at larval stage if threshold met</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">29</span><span class="xml-content">      <span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">30</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">31</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">32</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">33</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span><span class="xml-text">partially_verified</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">34</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span><span class="xml-text">none</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">35</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span><span class="xml-text">none</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">36</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">37</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">8</span>
+        <span class="q-text">How can I prevent northern masked chafer in walnut on my small farm in Ohio?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag partial">partially_verified</span>
+        <span class="meta-tag entities">0 entities</span>
+        <span class="meta-tag kg">1 KG entry</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">诊断结论</div>
+        <p>Northern masked chafer risk in walnut, exacerbated by hail damage. Low-maintenance prevention: late-season tillage, soil-applied insecticides, biological nematodes.</p>
+      </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #8</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"8"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">/&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">1 entry: Limabean pod borer (not directly relevant)</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Northern masked chafer risk, general ag knowledge applied</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">partially_verified | contradictions: none</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">9</span>
+        <span class="q-text">Why do I have wild oat in my hazelnut crop in Idaho, and how can I prevent it next year while using organic practices?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag partial">partially_verified</span>
+        <span class="meta-tag entities">0 entities</span>
+        <span class="meta-tag kg">1 KG entry</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">诊断结论</div>
+        <p>Wild oat via wind-dispersed seeds. Organic prevention: thick mulch, competitive cover crops, manual removal, aphid monitoring.</p>
+      </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #9</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"9"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">/&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">1 entry: bird cherry-oat aphid</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Wild oat via wind + aphid reservoir risk</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">partially_verified | contradictions: none</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
+    </div>
+
+    <div class="result-card">
+      <div class="q-header">
+        <span class="q-num">10</span>
+        <span class="q-text">How can I determine the damage caused to my peas in Illinois using conventional farming practices?</span>
+      </div>
+      <div class="q-meta">
+        <span class="meta-tag failed">parse_failed</span>
+        <span class="meta-tag entities">5 entities</span>
+        <span class="meta-tag kg">8 KG entries</span>
+      </div>
+      <div class="reasoning-box">
+        <div class="label">识别实体</div>
+        <p>eggplant low temperature injury, parsley early blight, pea rust, bean southern blight, pea root rot</p>
+      </div>
+      <details class="xml-toggle"><summary>查看 XML 输出</summary>
+      <div class="xml-viewer xml-mini"><div class="xml-viewer-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span><span>item #10</span></div><div class="xml-body">
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"10"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span><span class="xml-text">5 diseases: pea rust, pea root rot, pea Ascochyta blight, etc.</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span><span class="xml-text">8 entries: Bean pod borer, Pea Ascochyta, Pea Mycosphaerella, Pea rust, Pea root rot...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Fog promotes rust/Ascochyta; visual symptom inspection post-fog</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span> <span class="xml-text">parse_failed</span> <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+      </div></div>
+      </details>
+    </div>
   </div>
 </section>
 
@@ -819,51 +1065,67 @@
   </div>
 </section>
 
-<!-- 8. XML Output Preview -->
+<!-- 8. XML Output Preview (Best Result: Item #7) -->
 <section>
   <div class="container">
-    <div class="section-title"><span class="num">8</span> 输出样例 (XML)</div>
-    <p class="section-desc">每条输出包含问题分析、实体、KG 证据、推理链、验证结果</p>
+    <div class="section-title"><span class="num">8</span> 最佳输出样例 (Item #7)</div>
+    <p class="section-desc">10 条中验证最干净的结果 — partially_verified，无矛盾、无未支撑声明</p>
 
     <div class="xml-viewer">
       <div class="xml-viewer-header">
         <span class="dot dot-r"></span>
         <span class="dot dot-y"></span>
         <span class="dot dot-g"></span>
-        <span>agri_qa_reasoning.xml</span>
+        <span>agri_qa_reasoning.xml &mdash; item #7</span>
       </div>
       <div class="xml-body">
-<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"1"</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span><span class="xml-text">What issues are affecting my collards and how can I prevent silverspotted skipper infestations next year?</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">1</span><span class="xml-content"><span class="xml-bracket">&lt;</span><span class="xml-tag">item</span> <span class="xml-attr">id</span><span class="xml-bracket">=</span><span class="xml-val">"7"</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">2</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span><span class="xml-text">What methods can I use to prevent spiny looper infestation in my alfalfa field next year, given that I live in Minnesota?</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question</span><span class="xml-bracket">&gt;</span></span></div>
 <div class="xml-line"><span class="xml-ln">3</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">question_type</span><span class="xml-bracket">&gt;</span><span class="xml-text">Biotic Diseases Questions</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">question_type</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">/&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span><span class="xml-text">Gypsy moth</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span><span class="xml-text">幼虫主要为害叶片，严重时可将全树叶片吃光...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">9</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention</span><span class="xml-bracket">&gt;</span><span class="xml-text">农业：人工捕杀；物理：黑光灯诱杀；药剂：辛硫磷...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">10</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">11</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">12</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">13</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">14</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span><span class="xml-text">Pest identification and management</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">15</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span><span class="xml-text">Collards</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">16</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">17</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">18</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span> <span class="xml-attr">n</span><span class="xml-bracket">=</span><span class="xml-val">"1"</span><span class="xml-bracket">&gt;</span><span class="xml-text">Collards are brassica crops prone to various insect pests...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">19</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span> <span class="xml-attr">n</span><span class="xml-bracket">=</span><span class="xml-val">"2"</span><span class="xml-bracket">&gt;</span><span class="xml-text">No direct evidence in KG, but analogous pests provide insight...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">20</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">21</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">22</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Collards likely affected by silverspotted skipper caterpillars...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">23</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span><span class="xml-text">1. Agricultural: Remove debris  2. Physical: Hand-pick  3. Chemical: Bt</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">24</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">25</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">26</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">27</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span><span class="xml-text">partially_verified</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">28</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span><span class="xml-text">none</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">29</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span><span class="xml-text">Silverspotted skipper as the pest; row covers not in KG...</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">30</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
-<div class="xml-line"><span class="xml-ln">31</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">4</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">5</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entity</span> <span class="xml-attr">type</span><span class="xml-bracket">=</span><span class="xml-val">"disease"</span> <span class="xml-attr">name</span><span class="xml-bracket">=</span><span class="xml-val">"alfalfa plant bug"</span><span class="xml-bracket">&gt;</span><span class="xml-text">苜蓿盲蝽</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entity</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">6</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entity</span> <span class="xml-attr">type</span><span class="xml-bracket">=</span><span class="xml-val">"disease"</span> <span class="xml-attr">name</span><span class="xml-bracket">=</span><span class="xml-val">"alfalfa mosaic virus"</span><span class="xml-bracket">&gt;</span><span class="xml-text">辣椒苜蓿花叶病毒病</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">entity</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">7</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">entities</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">8</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">9</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">10</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span><span class="xml-text">Mugwort looper</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">11</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span><span class="xml-text">幼虫食叶片、嫩茎。</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">12</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">occurrence</span><span class="xml-bracket">&gt;</span><span class="xml-text">6～9月份幼虫零星发生，以蛹在土中越冬。</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">occurrence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">13</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">14</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">15</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span><span class="xml-text">Alfalfa plant bug</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">name_en</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">16</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">occurrence</span><span class="xml-bracket">&gt;</span><span class="xml-text">每年发生3～4代，以卵在苜蓿茎杆内越冬。</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">occurrence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">17</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention</span><span class="xml-bracket">&gt;</span><span class="xml-text">农业防治 + 药剂防治（吡虫啉、毒死蜱等）</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">18</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">entry</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">19</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">kg_evidence</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">20</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">21</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">22</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span><span class="xml-text">Pest prevention strategy</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">type</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">23</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span><span class="xml-text">Alfalfa</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">crop</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">24</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span><span class="xml-text">Defoliation by larvae (inferred from looper behavior)</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">symptoms</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">25</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">question_analysis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">26</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">27</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">1. Spiny looper analogous to Mugwort looper (KG), feeds on leaves/stems</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">28</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">2. Mugwort looper: larvae 6-9月, pupae overwinter in soil</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">29</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">3. MN cold winters affect overwintering pupae; tillage disrupts pupation</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">30</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span><span class="xml-text">4. Combine agricultural + biological + chemical controls</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">step</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">31</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_steps</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">32</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">33</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span><span class="xml-text">Spiny looper larvae causing defoliation, overwintering as pupae in soil</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">diagnosis</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">34</span><span class="xml-content">      <span class="xml-bracket">&lt;</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">35</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Crop rotation + residue removal + fall tillage to kill pupae</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">36</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Pheromone traps for adult moth monitoring (June onward)</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">37</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Biological: promote parasitic wasps, avoid broad-spectrum insecticides</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">38</span><span class="xml-content">        <span class="xml-bracket">&lt;</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span><span class="xml-text">Chemical: targeted pyrethroids at larval stage if threshold met</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">method</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">39</span><span class="xml-content">      <span class="xml-bracket">&lt;/</span><span class="xml-tag">prevention_plan</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">40</span><span class="xml-content">    <span class="xml-bracket">&lt;/</span><span class="xml-tag">conclusion</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">41</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">reasoning_chain</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">42</span><span class="xml-content">  <span class="xml-bracket">&lt;</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">43</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span><span class="xml-text">partially_verified</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">status</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">44</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span><span class="xml-text">none</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">contradictions</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">45</span><span class="xml-content">    <span class="xml-bracket">&lt;</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span><span class="xml-text">none</span><span class="xml-bracket">&lt;/</span><span class="xml-tag">unsupported_claims</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">46</span><span class="xml-content">  <span class="xml-bracket">&lt;/</span><span class="xml-tag">verification</span><span class="xml-bracket">&gt;</span></span></div>
+<div class="xml-line"><span class="xml-ln">47</span><span class="xml-content"><span class="xml-bracket">&lt;/</span><span class="xml-tag">item</span><span class="xml-bracket">&gt;</span></span></div>
       </div>
     </div>
   </div>
