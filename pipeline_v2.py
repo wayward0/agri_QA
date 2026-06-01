@@ -128,6 +128,16 @@ def build_xml_output(items_data: List[dict]) -> str:
     return etree.tostring(parsed, pretty_print=True, encoding="unicode")
 
 
+def _save_intermediate(results: List[dict]) -> None:
+    """Save current results to XML after each item."""
+    if not results:
+        return
+    xml_str = build_xml_output(results)
+    os.makedirs(os.path.dirname(config.PATH_OUTPUT_XML), exist_ok=True)
+    with open(config.PATH_OUTPUT_XML, "w", encoding="utf-8") as f:
+        f.write(xml_str)
+
+
 def run_pipeline():
     """Full pipeline execution."""
     # Prepare data
@@ -152,37 +162,50 @@ def run_pipeline():
     print(f"{'=' * 60}")
 
     results = []
+    consecutive_errors = 0
     for idx, item in enumerate(tqdm(items_to_process, desc="Pipeline")):
         question = item.get("Question", "")
         q_type = item.get("Question Type", "")
 
-        # Step 1: Entity recognition
-        entities = recognize_entities(question, term_dict, entity_index, model)
+        try:
+            # Step 1: Entity recognition
+            entities = recognize_entities(question, term_dict, entity_index, model)
 
-        # Step 2: KG retrieval
-        kg_entries_matched, kg_context = retrieve_kg(question, entities, kg_index, kg_entries, model)
+            # Step 2: KG retrieval
+            kg_entries_matched, kg_context = retrieve_kg(question, entities, kg_index, kg_entries, model)
 
-        # Step 3+4: Reasoning generation with self-consistency
-        best_result, consistency = run_self_consistency(
-            question, kg_context, entities, client=client,
-        )
+            # Step 3+4: Reasoning generation with self-consistency
+            best_result, consistency = run_self_consistency(
+                question, kg_context, entities, client=client,
+            )
 
-        # Step 5: Post-verification
-        verification = verify_reasoning(
-            best_result.get("raw_xml", ""), kg_context, client=client,
-        )
+            # Step 5: Post-verification
+            verification = verify_reasoning(
+                best_result.get("raw_xml", ""), kg_context, client=client,
+            )
 
-        results.append({
-            "id": idx + 1,
-            "question": question,
-            "question_type": q_type,
-            "entities": entities,
-            "kg_entries": kg_entries_matched,
-            "raw_xml": best_result.get("raw_xml", ""),
-            "diagnosis": best_result.get("diagnosis", "Unknown"),
-            "consistency": consistency,
-            "verification": verification,
-        })
+            results.append({
+                "id": idx + 1,
+                "question": question,
+                "question_type": q_type,
+                "entities": entities,
+                "kg_entries": kg_entries_matched,
+                "raw_xml": best_result.get("raw_xml", ""),
+                "diagnosis": best_result.get("diagnosis", "Unknown"),
+                "consistency": consistency,
+                "verification": verification,
+            })
+            consecutive_errors = 0
+
+            # Save after each item to prevent data loss
+            _save_intermediate(results)
+
+        except Exception as e:
+            print(f"\n  [ERROR] Item {idx+1}: {str(e)[:120]}")
+            consecutive_errors += 1
+            if consecutive_errors >= 3:
+                print("  3 consecutive errors — stopping early.")
+                break
 
         # Rate limiting
         if idx < len(items_to_process) - 1:
