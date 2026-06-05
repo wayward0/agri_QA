@@ -22,6 +22,7 @@ from reviewer.integrator import run_review
 from reviser.reviser import execute_revision
 from evaluator.auto_metrics import compute_auto_metrics
 from evaluator.llm_judge import judge_faithfulness, judge_logical_completeness
+from evaluator.ppl_scorer import compute_ppl
 from models import (
     ClassificationResult,
     DifficultyLevel,
@@ -205,10 +206,19 @@ def process_item(
         + logic / 5 * w["logical_completeness"]
         + auto["traceability"] * w["traceability"]
     )
+
+    # PPL: diagnostic fluency score (local GPT-2, no API cost)
+    ppl_score = None
+    try:
+        ppl_score = compute_ppl(revised_chain.to_text())
+    except Exception:
+        pass  # torch/transformers not installed or model load failure
+
     scores = QualityScores(
         faithfulness=faith,
         logical_completeness=logic,
         overall=round(overall, 3),
+        ppl=ppl_score,
         **auto,
     )
 
@@ -242,10 +252,17 @@ def process_item(
             + logic / 5 * w["logical_completeness"]
             + auto["traceability"] * w["traceability"]
         )
+        ppl_score = None
+        try:
+            ppl_score = compute_ppl(revised_chain.to_text())
+        except Exception:
+            pass
+
         scores = QualityScores(
             faithfulness=faith,
             logical_completeness=logic,
             overall=round(overall, 3),
+            ppl=ppl_score,
             **auto,
         )
 
