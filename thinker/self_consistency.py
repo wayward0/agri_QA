@@ -1,15 +1,58 @@
 """Self-Consistency: generate multiple reasoning paths, select the best one.
 
+Selection uses two-stage approach:
+1. Semantic clustering of final conclusions (majority vote)
+2. Heuristic scoring within the majority cluster
+
 Imports generate_react_chain from the same package (acceptable intra-package dependency).
 Tests mock this import for isolation.
 """
 
-from typing import List
+import json
+import re
+from typing import List, Optional
 
 from models import ReasoningChain
 
 from .react_generator import generate_react_chain
 from .socratic_challenger import socratic_challenge, revise_with_socratic
+
+
+CLUSTER_SYSTEM_PROMPT = "You are an agricultural reasoning evaluator."
+
+CLUSTER_PROMPT = """You are given the final conclusions from {n} reasoning chains about the same
+agricultural question. Group them into clusters of semantically equivalent conclusions.
+
+Question: {question}
+Expected Answer: {answer}
+
+Conclusions:
+{conclusions_text}
+
+Rules:
+- Two conclusions are "equivalent" if they recommend the same core action/answer, even with different wording
+- Two conclusions are "different" if they contradict each other or recommend fundamentally different approaches
+- A conclusion is "off-topic" if it doesn't address the question at all
+
+Output (JSON only):
+{{"clusters": [
+  {{"label": "brief description of this conclusion group", "indices": [0, 2]}},
+  {{"label": "...", "indices": [1]}}
+]}}
+
+Each index must appear in exactly one cluster."""
+
+
+def _extract_conclusion(chain: ReasoningChain) -> str:
+    """Extract the conclusion text from a reasoning chain."""
+    # Prefer explicit conclusion step
+    for step in chain.steps:
+        if step.type == "conclusion":
+            return step.content
+    # Fallback: last step
+    if chain.steps:
+        return chain.steps[-1].content
+    return ""
 
 
 def _score_candidate(chain: ReasoningChain) -> float:
@@ -19,6 +62,7 @@ def _score_candidate(chain: ReasoningChain) -> float:
     - Step count: 3-7 is optimal (penalty outside range)
     - Evidence utilization: more steps with evidence = better
     - Type diversity: more step types used = better
+    - High confidence ratio
     """
     n_steps = len(chain.steps)
     if n_steps == 0:
@@ -48,14 +92,109 @@ def _score_candidate(chain: ReasoningChain) -> float:
             diversity_score * 0.2 + conf_score * 0.15)
 
 
-def _select_best(candidates: List[ReasoningChain]) -> ReasoningChain:
-    """Select the best chain from candidates based on scoring."""
-    scored = [(chain, _score_candidate(chain)) for chain in candidates if chain.steps]
+def _cluster_conclusions(
+    candidates: List[ReasoningChain],
+    question: str,
+    answer: str,
+    llm_call,
+) -> Optional[List[List[int]]]:
+    """Cluster candidate chains by semantic equivalence of their conclusions.
+
+    Returns list of clusters, each cluster is a list of indices into candidates.
+    Returns None if clustering fails.
+    """
+    conclusions = []
+    for i, chain in enumerate(candidates):
+        concl = _extract_conclusion(chain)
+        conclusions.append(f"[{i}] {concl}")
+
+    conclusions_text = "\n".join(conclusions)
+    prompt = CLUSTER_PROMPT.format(
+        n=len(candidates),
+        question=question,
+        answer=answer,
+        conclusions_text=conclusions_text,
+    )
+
+    raw = llm_call(prompt, system=CLUSTER_SYSTEM_PROMPT, temperature=0.0, max_tokens=512)
+
+    # Parse JSON
+    json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not json_match:
+        return None
+
+    try:
+        data = json.loads(json_match.group(0))
+    except json.JSONDecodeError:
+        return None
+
+    clusters = data.get("clusters", [])
+    if not clusters:
+        return None
+
+    # Validate: each index appears exactly once
+    all_indices = []
+    for cluster in clusters:
+        indices = cluster.get("indices", [])
+        if not isinstance(indices, list):
+            return None
+        all_indices.extend(indices)
+
+    expected = set(range(len(candidates)))
+    if set(all_indices) != expected:
+        # Allow partial clustering — fill in missing indices as singletons
+        seen = set(all_indices)
+        for i in expected - seen:
+            clusters.append({"indices": [i]})
+
+    return [c["indices"] for c in clusters]
+
+
+def _select_best(
+    candidates: List[ReasoningChain],
+    question: str = "",
+    answer: str = "",
+    llm_call=None,
+) -> ReasoningChain:
+    """Select the best chain using semantic clustering + heuristic scoring.
+
+    1. Cluster conclusions by semantic equivalence (majority vote)
+    2. Pick the largest cluster (ties broken by total heuristic score)
+    3. Within the winning cluster, pick the highest heuristic score
+    """
+    scored = [(i, chain, _score_candidate(chain)) for i, chain in enumerate(candidates) if chain.steps]
     if not scored:
-        # Return the first candidate as fallback
         return candidates[0] if candidates else ReasoningChain(steps=[])
-    scored.sort(key=lambda x: x[1], reverse=True)
-    best = scored[0][0]
+
+    # Try semantic clustering
+    clusters = None
+    if llm_call and len(candidates) > 1:
+        clusters = _cluster_conclusions(candidates, question, answer, llm_call)
+
+    if clusters:
+        # Score each cluster: size first, then sum of heuristic scores as tiebreaker
+        scored_map = {i: hs for i, _, hs in scored}
+        cluster_scores = []
+        for cluster_indices in clusters:
+            size = len(cluster_indices)
+            total_hs = sum(scored_map.get(i, 0.0) for i in cluster_indices)
+            cluster_scores.append((cluster_indices, size, total_hs))
+
+        # Sort: largest cluster first, then highest total heuristic score
+        cluster_scores.sort(key=lambda x: (x[1], x[2]), reverse=True)
+        winner_indices = cluster_scores[0][0]
+
+        # Within winner cluster, pick highest heuristic score
+        winner_candidates = [
+            (chain, hs) for i, chain, hs in scored if i in winner_indices
+        ]
+        winner_candidates.sort(key=lambda x: x[1], reverse=True)
+        best = winner_candidates[0][0]
+    else:
+        # Fallback: pure heuristic
+        scored.sort(key=lambda x: x[2], reverse=True)
+        best = scored[0][1]
+
     best.self_consistency_selected = 1
     return best
 
@@ -100,7 +239,7 @@ def generate_with_consistency(
                 temperature=temp,
             )
             candidates.append(chain)
-        chain = _select_best(candidates)
+        chain = _select_best(candidates, question=question, answer=answer, llm_call=llm_call)
 
     # Socratic self-challenge on the selected chain
     challenges = socratic_challenge(chain, question, answer, llm_call)
