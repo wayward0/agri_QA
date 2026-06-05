@@ -141,6 +141,37 @@ def save_sample(items: List[dict], path: Path):
         json.dump(items, f, ensure_ascii=False, indent=2)
 
 
+def _evaluate_chain(chain, evaluator_call):
+    """Evaluate a reasoning chain and return quality scores + diagnostic notes."""
+    faith, faith_notes = judge_faithfulness(chain, evaluator_call)
+    logic, logic_notes = judge_logical_completeness(chain, evaluator_call)
+    auto = compute_auto_metrics(chain)
+    w = config.EVAL_WEIGHTS
+    overall = (
+        faith / 5 * w["faithfulness"]
+        + auto["structure"] * w["structure"]
+        + auto["information_density"] * w["information_density"]
+        + logic / 5 * w["logical_completeness"]
+        + auto["traceability"] * w["traceability"]
+        + auto["step_order"] * w["step_order"]
+    )
+    ppl_score = compute_ppl(
+        chain.to_text(),
+        api_key=config.API_KEY,
+        base_url=config.API_BASE_URL,
+        model=config.MODEL_LIGHT,
+    )
+    scores = QualityScores(
+        faithfulness=faith,
+        logical_completeness=logic,
+        overall=round(overall, 3),
+        step_order=auto["step_order"],
+        ppl=ppl_score,
+        **{k: v for k, v in auto.items() if k != "step_order"},
+    )
+    return scores, faith, faith_notes, logic, logic_notes
+
+
 def process_item(
     item: dict,
     item_id: str,
@@ -196,32 +227,7 @@ def process_item(
         revised_chain = draft_chain
 
     # Stage 4: Evaluator (standard model) — all difficulty levels
-    faith, faith_notes = judge_faithfulness(revised_chain, evaluator_call)
-    logic, logic_notes = judge_logical_completeness(revised_chain, evaluator_call)
-    auto = compute_auto_metrics(revised_chain)
-    w = config.EVAL_WEIGHTS
-    overall = (
-        faith / 5 * w["faithfulness"]
-        + auto["structure"] * w["structure"]
-        + auto["information_density"] * w["information_density"]
-        + logic / 5 * w["logical_completeness"]
-        + auto["traceability"] * w["traceability"]
-    )
-
-    # PPL: diagnostic fluency score (local GPT-2, no API cost)
-    ppl_score = None
-    try:
-        ppl_score = compute_ppl(revised_chain.to_text())
-    except Exception:
-        pass  # torch/transformers not installed or model load failure
-
-    scores = QualityScores(
-        faithfulness=faith,
-        logical_completeness=logic,
-        overall=round(overall, 3),
-        ppl=ppl_score,
-        **auto,
-    )
+    scores, faith, faith_notes, logic, logic_notes = _evaluate_chain(revised_chain, evaluator_call)
 
     # Quality gate: determine if retry is needed
     gate_triggered = False
@@ -242,30 +248,7 @@ def process_item(
         revised_chain = execute_revision(revised_chain, actions2, reviser_call, rag_tool)
         critiques.extend(critiques2)
 
-        faith, faith_notes = judge_faithfulness(revised_chain, evaluator_call)
-        logic, logic_notes = judge_logical_completeness(revised_chain, evaluator_call)
-        auto = compute_auto_metrics(revised_chain)
-        w = config.EVAL_WEIGHTS
-        overall = (
-            faith / 5 * w["faithfulness"]
-            + auto["structure"] * w["structure"]
-            + auto["information_density"] * w["information_density"]
-            + logic / 5 * w["logical_completeness"]
-            + auto["traceability"] * w["traceability"]
-        )
-        ppl_score = None
-        try:
-            ppl_score = compute_ppl(revised_chain.to_text())
-        except Exception:
-            pass
-
-        scores = QualityScores(
-            faithfulness=faith,
-            logical_completeness=logic,
-            overall=round(overall, 3),
-            ppl=ppl_score,
-            **auto,
-        )
+        scores, faith, faith_notes, logic, logic_notes = _evaluate_chain(revised_chain, evaluator_call)
 
     return PipelineItem(
         id=item_id,

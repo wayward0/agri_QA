@@ -50,10 +50,11 @@ FAITHFULNESS_GATE_THRESHOLD = 3.0  # MEDIUM: force retry if faithfulness drops b
 MAX_REVISION_ITERATIONS = 1
 EVAL_WEIGHTS = {
     "faithfulness": 0.25,
-    "structure": 0.20,
-    "information_density": 0.15,
+    "structure": 0.15,
+    "information_density": 0.10,
     "logical_completeness": 0.25,
     "traceability": 0.15,
+    "step_order": 0.10,
 }
 
 # --- Pipeline ---

@@ -94,25 +94,33 @@ agri_QA/
 ├── fetch_from_dumps.py         # Wikipedia dump 离线解析器
 ├── run_fetch.py                # Wikipedia API 在线抓取器
 ├── AgThoughts.json             # 源 QA 数据集
+├── requirements.txt            # Python 依赖
+├── pytest.ini                  # 测试配置
 │
 ├── classifier/                 # Stage 0: 难度分类
+│   ├── __init__.py
 │   └── difficulty_classifier.py
 ├── thinker/                    # Stage 1: 推理生成
+│   ├── __init__.py
 │   ├── react_generator.py      #   ReAct 推理循环
 │   ├── self_consistency.py     #   自洽性多路径采样
 │   └── socratic_challenger.py  #   苏格拉底自质疑 + 修正
 ├── reviewer/                   # Stage 2: 多阶段审查
+│   ├── __init__.py
 │   ├── logic_reviewer.py       #   Phase A: 逻辑审查
 │   ├── external_reviewer.py    #   Phase B: 事实核查
 │   └── integrator.py           #   Phase C: 整合
 ├── reviser/                    # Stage 3: 修订执行
+│   ├── __init__.py
 │   └── reviser.py
 ├── evaluator/                  # Stage 4: 质量评估
+│   ├── __init__.py
 │   ├── auto_metrics.py         #   自动指标 (结构/密度/可追溯性)
 │   ├── llm_judge.py            #   LLM-as-Judge (忠实度/逻辑完整性)
-│   └── ppl_scorer.py           #   困惑度评分 (可选, GPT-2)
+│   └── ppl_scorer.py           #   困惑度评分 (诊断指标, DeepSeek logprobs)
 │
 ├── rag/                        # RAG 检索增强
+│   ├── __init__.py
 │   ├── rag_tool.py             #   统一检索接口 (含 Graph 扩展)
 │   ├── retriever.py            #   混合检索: FAISS + BM25 + RRF
 │   ├── embedding_client.py     #   Embedding API 客户端 (bge-m3)
@@ -122,9 +130,15 @@ agri_QA/
 │   ├── kg_index.py             #   知识图谱索引 (实体匹配 + 图扩展)
 │   └── query_processor.py      #   查询改写 + 实体抽取
 │
+├── tests/                      # 单元测试
+│   └── ...
+├── docs/                       # 文档
+│   └── ...
+│
 ├── data/
 │   ├── agthoughts/sample_1000.json   # 分层抽样 1000 条
 │   ├── chunks/passages.jsonl         # 分块后的 Wikipedia 段落
+│   ├── raw/                          # Wikipedia 原始数据 (dump/抓取)
 │   └── index/
 │       ├── faiss.index               # FAISS 密集索引 (1024 维)
 │       ├── bm25.pkl                  # BM25 稀疏索引
@@ -321,22 +335,30 @@ Revision: 基于质疑修正推理链
 ### 评估器 (evaluator/)
 
 **自动指标** (`auto_metrics.py`): 纯函数，无外部依赖
-- `structure_score`: 是否有 context_setup 和 conclusion，步骤数 3-7
-- `information_density`: 非公式化词汇占比
+- `structure_score`: context_setup/conclusion 存在、步骤数 3-7、内容非空、conclusion 在末位
+- `information_density`: 非公式化词汇占比 (自动检测中英文，分别使用停用词表)
 - `traceability`: 有证据引用的步骤占比
+- `step_order_score`: context_setup 在前、conclusion 在后且不早于第 3 步
 
 **LLM-as-Judge** (`llm_judge.py`):
 - `faithfulness` (1-5): 每个事实断言是否有证据支持
 - `logical_completeness` (1-5): 推理链是否覆盖所有必要步骤
 
+**PPL 诊断** (`ppl_scorer.py`):
+- 通过 DeepSeek API 的 logprobs 计算平均负对数似然，作为困惑度代理指标
+- 使用 `deepseek-v4-flash` (LIGHT 层级) 以降低成本
+- 仅作为诊断指标，不参与 overall 加权总分
+- PPL 越低表示模型对文本的预测置信度越高 (更流畅)
+
 **加权总分:**
 
 ```
 overall = faithfulness/5 × 0.25
-        + structure × 0.20
-        + information_density × 0.15
+        + structure × 0.15
+        + information_density × 0.10
         + logical_completeness/5 × 0.25
         + traceability × 0.15
+        + step_order × 0.10
 ```
 
 ### 质量门控与反馈流
@@ -484,10 +506,14 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 
 | 类型 | 说明 | 关键字段 |
 |------|------|---------|
+| `DifficultyLevel` | 难度枚举 | EASY, MEDIUM, HARD |
 | `Evidence` | RAG 检索到的证据 | content, source, relevance_score |
 | `ReasoningStep` | 推理链单步 | step, type (7种), content, evidence, confidence |
 | `ReasoningChain` | 完整推理链 | steps, react_rounds, self_consistency_selected |
-| `QualityScores` | 五维质量评分 | faithfulness, structure, density, logic, traceability, overall |
+| `QualityScores` | 质量评分 (五维 + PPL 诊断) | faithfulness, structure, density, logic, traceability, overall, ppl |
+| `ReviewCritique` | 审查意见 | issues (列表), phase |
+| `ReviewAction` | 原子审查操作 | action, target_step, priority, params, reason |
+| `UnifiedActions` | 整合后的操作集 | priority_actions, optional_improvements, conflicts_resolved |
 | `PipelineItem` | 流经 pipeline 的完整 item | 含全部中间结果和元数据 |
 | `LLMCallFn` | LLM 调用协议 | `(prompt, system, temperature, max_tokens, model) -> str` |
 
@@ -499,10 +525,25 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 
 所有参数在 `config.py` 中定义，支持环境变量覆盖:
 
+### API 参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `LLM_API_BASE_URL` | `https://ai.centos.hk/v1` | LLM API 地址 |
+| `AI_CENTOS_API_KEY` | (空) | LLM API Key |
+| `LLM_MAX_TOKENS` | 4096 | LLM 最大输出 token 数 |
+
 ### RAG 参数
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
+| `EMBEDDING_API_BASE_URL` | `https://api.moark.com/v1` | Embedding API 地址 |
+| `EMBEDDING_API_KEY` | (空) | Embedding API Key |
+| `EMBEDDING_MODEL_NAME` | `bge-m3` | Embedding 模型名 (环境变量: `EMBEDDING_MODEL`) |
+| `EMBEDDING_DIM` | 1024 | Embedding 向量维度 |
+| `RERANKER_API_URL` | `https://api.moark.com/v1/rerank` | Reranker API 地址 |
+| `RERANKER_API_KEY` | (空) | Reranker API Key |
+| `RERANKER_MODEL` | `bge-reranker-v2-m3` | Reranker 模型名 |
 | `RAG_TOP_K_BACKGROUND` | 5 | 背景检索返回条数 |
 | `RAG_TOP_K_FACT_CHECK` | 3 | 事实核查返回条数 |
 | `RAG_TOP_K_GAP_FILL` | 3 | 缺口填充返回条数 |
@@ -539,7 +580,7 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `MAX_CONCURRENCY` | 10 | 异步并发 item 数量 |
-| `API_CALL_INTERVAL` | 0.5s | item 间限流间隔 (串行模式) |
+| `API_CALL_INTERVAL` | 0.5s | item 间限流间隔 (仅串行模式, 异步模式下未使用) |
 | `CONSECUTIVE_FAILURE_LIMIT` | 3 | 连续失败上限 |
 
 ## 输出格式
@@ -573,7 +614,8 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
     "information_density": 0.969,
     "logical_completeness": 3.0,
     "traceability": 0.667,
-    "overall": 0.745
+    "overall": 0.745,
+    "ppl": 45.2
   },
   "critique_history": [...],
   "metadata": {
@@ -598,7 +640,7 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 python run_fetch.py
 ```
 
-通过 Wikipedia Category API 发现农业文章标题，REST API 抓取内容，自动进行相关性过滤。
+通过 Wikipedia Category API 发现农业文章标题，REST API 抓取内容，自动进行相关性过滤。支持断点续传: 标题发现阶段保存 checkpoint (已访问分类 + 已发现标题)，中断后重新运行自动跳过已完成的分类。
 
 ### 方式二: 离线解析 (从 dump 文件)
 
@@ -606,7 +648,7 @@ python run_fetch.py
 python fetch_from_dumps.py
 ```
 
-从 Wikipedia multistream dump (.bz2) 中解析农业文章，无需 API 访问但需下载 dump 文件。
+从 Wikipedia multistream dump (.bz2) 中解析农业文章，无需 API 访问但需下载 dump 文件。支持断点续传: 下载阶段跳过已存在的文件 (>10MB)，解析阶段加载已有文章并跳过已处理标题，每处理完一个 dump 文件自动增量保存。
 
 ### 重建索引
 

@@ -81,19 +81,28 @@ def review_external(
     Returns:
         ReviewCritique with phase="B_external".
     """
-    # Fact-check: for each step with factual claims
+    # Collect all queries for batch retrieval
+    fact_check_steps = [
+        step for step in chain.steps
+        if step.type in ("knowledge_application", "causal_reasoning", "evidence_integration")
+    ]
+    queries = [step.content for step in fact_check_steps]
+    queries.append(question)  # gap-fill query
+
+    # Single batch retrieval call (one embedding API call for all queries)
+    batch_results = rag_tool.retrieve_batch(queries, intent="fact_check", top_k=3)
+
+    # Map results back to steps
     fact_check_parts = []
-    for step in chain.steps:
-        if step.type in ("knowledge_application", "causal_reasoning", "evidence_integration"):
-            evidence = rag_tool.retrieve(step.content, intent="fact_check", top_k=3)
-            if evidence:
-                fact_check_parts.append(f"Step {step.step}: " + "; ".join(
-                    f"[{e.source}] {e.content[:200]}" for e in evidence
-                ))
+    for step, evidence in zip(fact_check_steps, batch_results[:-1]):
+        if evidence:
+            fact_check_parts.append(f"Step {step.step}: " + "; ".join(
+                f"[{e.source}] {e.content[:200]}" for e in evidence
+            ))
     fact_check_text = "\n".join(fact_check_parts) if fact_check_parts else "No fact-check evidence retrieved."
 
-    # Gap-fill: retrieve supplementary knowledge
-    gap_evidence = rag_tool.retrieve(question, intent="gap_fill", top_k=3)
+    # Gap-fill results (last item in batch)
+    gap_evidence = batch_results[-1]
     gap_text = "\n".join(
         f"[{e.source}] {e.content[:200]}" for e in gap_evidence
     ) if gap_evidence else "No gap-fill evidence retrieved."

@@ -69,6 +69,44 @@ class RAGTool:
 
         return base_results
 
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        intent: str = "background",
+        top_k: int = 5,
+    ) -> List[List[Evidence]]:
+        """Batch retrieval — single embedding call for all queries.
+
+        Args:
+            queries: List of search queries.
+            intent: One of "background", "fact_check", "gap_fill".
+            top_k: Number of results per query.
+
+        Returns:
+            List of result lists, one per query.
+        """
+        threshold = {
+            "background": 0.0,
+            "fact_check": 0.0,
+            "gap_fill": 0.0,
+        }.get(intent, 0.0)
+
+        # Batch retrieval (single embedding call)
+        all_results = self._retriever.retrieve_batch(
+            queries, top_k=top_k, similarity_threshold=threshold
+        )
+
+        # Graph expansion per query (if KG available)
+        if self._kg:
+            for i, query in enumerate(queries):
+                graph_results = self._kg.expand_query(query, top_k=top_k)
+                if graph_results:
+                    all_results[i] = self._merge_results(
+                        all_results[i], graph_results, top_k
+                    )
+
+        return all_results
+
     def _merge_results(
         self,
         base: List[Evidence],

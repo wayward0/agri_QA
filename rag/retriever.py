@@ -133,3 +133,63 @@ class HybridRetriever:
             return results
 
         return filtered[:top_k]
+
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        top_k: int = 5,
+        similarity_threshold: float = 0.0,
+    ) -> List[List[Evidence]]:
+        """Batch retrieval: one embedding call, per-query BM25 + FAISS + rerank.
+
+        Args:
+            queries: List of search queries.
+            top_k: Number of results per query.
+            similarity_threshold: Minimum RRF score to include.
+
+        Returns:
+            List of result lists, one per query.
+        """
+        if not queries:
+            return []
+
+        # Batch embed all queries in a single API call
+        query_vecs = self._embedder.encode(queries, normalize_embeddings=True)
+        query_vecs = np.array(query_vecs, dtype="float32")
+
+        candidate_k = min(top_k * 4, 25) if self._reranker else top_k * 2
+
+        all_results = []
+        for i, query in enumerate(queries):
+            # Dense search with pre-computed vector
+            scores, indices = self._faiss.search(
+                query_vecs[i:i+1], min(candidate_k, len(self._metadata))
+            )
+            dense = []
+            for score, idx in zip(scores[0], indices[0]):
+                if idx >= 0:
+                    dense.append((int(idx), float(score)))
+
+            # Sparse search
+            sparse = self._sparse_search(query, candidate_k)
+
+            # RRF fusion
+            fused = self._rrf_fusion(dense, sparse)
+            filtered = [r for r in fused if r.relevance_score >= similarity_threshold]
+
+            # Rerank if available
+            if self._reranker and len(filtered) > top_k:
+                documents = [r.content for r in filtered]
+                reranked = self._reranker.rerank(query, documents, top_k=top_k)
+                results = []
+                for item in reranked:
+                    idx = item["index"]
+                    if idx < len(filtered):
+                        evidence = filtered[idx]
+                        evidence.relevance_score = round(item["relevance_score"], 4)
+                        results.append(evidence)
+                all_results.append(results)
+            else:
+                all_results.append(filtered[:top_k])
+
+        return all_results

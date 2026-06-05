@@ -246,7 +246,7 @@ class ReviewCritique:
 
 
 class QualityScores:
-    """Evaluator output with 5 dimensions."""
+    """Evaluator output with quality dimensions."""
 
     def __init__(
         self,
@@ -256,6 +256,7 @@ class QualityScores:
         logical_completeness: float,
         traceability: float,
         overall: float,
+        step_order: float = 0.0,
         ppl: Optional[float] = None,
     ):
         self.faithfulness = faithfulness
@@ -264,6 +265,7 @@ class QualityScores:
         self.logical_completeness = logical_completeness
         self.traceability = traceability
         self.overall = overall
+        self.step_order = step_order
         self.ppl = ppl
 
     def to_dict(self) -> dict:
@@ -273,6 +275,7 @@ class QualityScores:
             "information_density": self.information_density,
             "logical_completeness": self.logical_completeness,
             "traceability": self.traceability,
+            "step_order": self.step_order,
             "overall": self.overall,
         }
         if self.ppl is not None:
