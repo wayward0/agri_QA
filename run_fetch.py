@@ -22,13 +22,18 @@ def main():
     print("=" * 60)
     print()
 
-    # Step 1: Discover article titles from categories
+    checkpoint_path = "data/raw/titles_checkpoint.json"
+
+    # Step 1: Discover article titles from categories (with checkpoint)
     print("Step 1: Discovering article titles from Wikipedia categories...")
-    titles = fetch_titles_by_category(include_subcategories=True)
+    titles = fetch_titles_by_category(
+        include_subcategories=True,
+        checkpoint_path=checkpoint_path,
+    )
     print(f"Found {len(titles)} unique article titles.")
     print()
 
-    # Step 2: Fetch article content
+    # Step 2: Fetch article content (with resume)
     raw_path = "data/raw/articles.json"
     print(f"Step 2: Fetching article content (max 5000)...")
     articles = fetch_wikipedia_articles(
@@ -47,6 +52,10 @@ def main():
     # Save final
     save_articles(articles, raw_path)
     print(f"Saved to {raw_path}")
+
+    # Clean up checkpoint after successful completion
+    Path(checkpoint_path).unlink(missing_ok=True)
+    print("Checkpoint cleaned up.")
 
 
 if __name__ == "__main__":

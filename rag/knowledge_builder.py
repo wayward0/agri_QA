@@ -358,15 +358,18 @@ def fetch_titles_by_category(
     categories: Optional[List[str]] = None,
     max_per_category: int = 500,
     include_subcategories: bool = True,
+    checkpoint_path: Optional[str] = None,
 ) -> List[str]:
     """Fetch article titles from Wikipedia agricultural categories.
 
     Uses MediaWiki Category API (separate rate limits from REST content API).
+    Supports checkpoint/resume: saves progress after each category.
 
     Args:
         categories: List of Category:... names. If None, uses AGRICULTURAL_CATEGORIES.
         max_per_category: Max articles per category.
         include_subcategories: If True, also fetch from subcategories (1 level).
+        checkpoint_path: If provided, save/load checkpoint to this path.
 
     Returns:
         Deduplicated list of Wikipedia article titles.
@@ -376,6 +379,28 @@ def fetch_titles_by_category(
 
     all_titles = set()
     visited_cats = set()
+
+    # Resume from checkpoint
+    if checkpoint_path:
+        cp_file = Path(checkpoint_path)
+        if cp_file.exists():
+            try:
+                with open(cp_file, "r", encoding="utf-8") as f:
+                    cp = json.load(f)
+                all_titles = set(cp.get("titles", []))
+                visited_cats = set(cp.get("visited_categories", []))
+                print(f"  Resumed from checkpoint: {len(all_titles)} titles, {len(visited_cats)} categories done")
+            except Exception as e:
+                print(f"  Could not load checkpoint: {e}")
+
+    def _save_checkpoint():
+        if checkpoint_path:
+            Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(checkpoint_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "titles": sorted(all_titles),
+                    "visited_categories": sorted(visited_cats),
+                }, f, ensure_ascii=False, indent=2)
 
     def _fetch_category(cat: str) -> tuple:
         """Fetch article titles from one category.
@@ -459,10 +484,9 @@ def fetch_titles_by_category(
             for subcat in subcats:
                 if subcat in visited_cats:
                     continue
-                # Filter irrelevant subcategories
+                visited_cats.add(subcat)  # mark visited even if irrelevant
                 if not _is_agricultural_category(subcat):
                     continue
-                visited_cats.add(subcat)
                 sub_titles, sub_failed = _fetch_category(subcat)
                 if sub_failed:
                     api_failures += 1
@@ -471,6 +495,8 @@ def fetch_titles_by_category(
                 all_titles.update(sub_titles)
                 print(f"    {subcat}: {len(sub_titles)} articles")
                 time.sleep(_jitter(6.0))
+
+        _save_checkpoint()
 
     result = sorted(all_titles)
     print(f"  Total unique titles: {len(result)}")
