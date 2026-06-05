@@ -54,8 +54,15 @@ def _build_react_prompt(
     thoughts: List[str],
     observations: List[List[Evidence]],
 ) -> str:
-    """Build the prompt for the current ReAct round."""
-    parts = [f"Question: {question}\nAnswer: {answer}\n"]
+    """Build the prompt for the current ReAct round.
+
+    Layout: static instructions first (cacheable prefix), then dynamic context.
+    """
+    parts = [
+        "Continue the ReAct reasoning loop. Output your next Thought, then your Action.",
+        "Action must be either: retrieve: <query>  or  FINISH",
+        "When FINISH, output the full reasoning chain as JSON.\n",
+    ]
 
     for i, thought in enumerate(thoughts):
         parts.append(f"Thought {i+1}: {thought}")
@@ -65,6 +72,7 @@ def _build_react_prompt(
                 parts.append(f"  - [{e.source}] {e.content[:300]}")
         parts.append("")
 
+    parts.append(f"Question: {question}\nAnswer: {answer}\n")
     parts.append("What is your next Thought and Action?")
     return "\n".join(parts)
 

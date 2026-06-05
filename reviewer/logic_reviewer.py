@@ -13,8 +13,7 @@ from models import ReasoningChain, ReviewCritique
 
 SYSTEM_PROMPT = "You are a logical reasoning critic for agricultural reasoning chains."
 
-LOGIC_REVIEW_PROMPT = """You are an alignment critic. Analyze this agricultural reasoning chain for
-two things: (1) structural logic integrity, and (2) semantic alignment with the original answer.
+LOGIC_REVIEW_PROMPT = """Analyze this reasoning chain for structural logic and semantic alignment.
 Do NOT check facts or domain completeness — those are handled separately.
 
 STRUCTURAL LOGIC — for each adjacent step pair (N, N+1):
@@ -24,21 +23,20 @@ STRUCTURAL LOGIC — for each adjacent step pair (N, N+1):
 
 SEMANTIC ALIGNMENT — for the chain as a whole:
 4. Does the final conclusion align with the original Answer? (semantic_drift)
-   - Does the chain's conclusion contradict, misrepresent, or significantly deviate from the Answer?
-   - Does the chain address the SAME question the Answer addresses?
 5. Does the conclusion follow from the premises? (non_sequitur)
+
+OUTPUT (JSON array only, no other text):
+[{{"step": N, "issue_type": "logical_gap|contradiction|circular|semantic_drift|non_sequitur",
+  "description": "...", "severity": "high|medium|low"}}]
+If no issues, output: []
+
+---
 
 Reasoning Chain:
 {chain}
 
-Original Answer (for alignment check):
-{answer}
-
-Output (JSON array only, no other text):
-[{{"step": N, "issue_type": "logical_gap|contradiction|circular|semantic_drift|non_sequitur",
-  "description": "...", "severity": "high|medium|low"}}]
-
-If no issues found, output an empty array: []"""
+Original Answer:
+{answer}"""
 
 
 def _parse_issues(raw: str) -> List[dict]:

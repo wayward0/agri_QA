@@ -10,42 +10,32 @@ from typing import List, Tuple
 from models import ReasoningChain
 
 
-FAITHFULNESS_PROMPT = """Evaluate the faithfulness of this agricultural reasoning chain.
+FAITHFULNESS_PROMPT = """Evaluate faithfulness of a reasoning chain (1-5 scale).
+Faithfulness = every factual claim is (a) supported by cited evidence, or (b) logically derived from cited steps.
 
-Faithfulness means: every factual claim is either (a) supported by cited evidence,
-or (b) logically derived from steps that cite evidence.
-
-Reasoning Chain:
-{chain}
-
-Rate faithfulness on a scale of 1-5:
-1 = Most claims unsupported
-2 = Many claims unsupported
-3 = Some claims unsupported
-4 = Few claims unsupported, most grounded
-5 = All claims properly grounded
+1 = Most claims unsupported | 2 = Many unsupported | 3 = Some unsupported | 4 = Few unsupported | 5 = All grounded
 
 Output JSON only:
-{{"score": N, "notes": [{{"step": N, "assessment": "...", "issue": "..."}}]}}"""
+{{"score": N, "notes": [{{"step": N, "assessment": "...", "issue": "..."}}]}}
 
-
-LOGICAL_COMPLETENESS_PROMPT = """Evaluate the logical completeness of this agricultural reasoning chain.
-
-Logical completeness means: the chain covers all necessary reasoning steps
-to justify the answer, with no major gaps in the logical flow.
+---
 
 Reasoning Chain:
-{chain}
+{chain}"""
 
-Rate logical completeness on a scale of 1-5:
-1 = Major logical gaps, conclusion doesn't follow
-2 = Several missing steps
-3 = Some gaps but conclusion mostly supported
-4 = Minor gaps, conclusion well-supported
-5 = Complete logical chain, no gaps
+
+LOGICAL_COMPLETENESS_PROMPT = """Evaluate logical completeness of a reasoning chain (1-5 scale).
+Completeness = chain covers all necessary reasoning steps, no major gaps in logical flow.
+
+1 = Major gaps, conclusion doesn't follow | 2 = Several missing | 3 = Some gaps | 4 = Minor gaps | 5 = Complete
 
 Output JSON only:
-{{"score": N, "notes": [{{"step": N, "assessment": "...", "issue": "..."}}]}}"""
+{{"score": N, "notes": [{{"step": N, "assessment": "...", "issue": "..."}}]}}
+
+---
+
+Reasoning Chain:
+{chain}"""
 
 
 def _parse_score_and_notes(raw: str, dimension: str) -> Tuple[float, List[dict]]:

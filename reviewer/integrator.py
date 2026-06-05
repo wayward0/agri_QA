@@ -22,17 +22,9 @@ from .external_reviewer import review_external
 
 SYSTEM_PROMPT = "You are an integrator merging critiques into structured modification actions."
 
-INTEGRATION_PROMPT = """You are an integrator merging critiques from logic and external reviewers.
-Output STRUCTURED modification actions, NOT natural language feedback.
+INTEGRATION_PROMPT = """Merge critiques into STRUCTURED modification actions (not natural language).
 
-Logic Critique:
-{logic_critique}
-
-External Critique:
-{external_critique}
-{evaluator_feedback}
-
-AVAILABLE ACTIONS (atomic operations):
+AVAILABLE ACTIONS (atomic):
 - add_evidence:    {{"action": "add_evidence", "target_step": N, "params": {{"evidence": "..."}}}}
 - revise_step:     {{"action": "revise_step", "target_step": N, "params": {{"revised_content": "..."}}}}
 - insert_step:     {{"action": "insert_step", "target_step": N, "params": {{"new_step": {{"type": "...", "content": "...", "evidence": null, "confidence": "medium"}}}}}}
@@ -45,13 +37,21 @@ RULES:
 2. If a step needs both evidence and content revision → TWO separate actions
 3. Priority: P0 (must fix: factual errors, contradictions), P1 (should fix: missing steps, weak evidence), P2 (optional: style, clarity)
 4. Do NOT generate vague actions — use specific action types
-5. When evaluator feedback is provided, PRIORITIZE fixing the specific steps flagged by the evaluator
+5. When evaluator feedback is provided, PRIORITIZE fixing the specific steps flagged
 
-Output (JSON only):
+OUTPUT (JSON only):
 {{"priority_actions": [
     {{"priority": "P0", "action": "add_evidence", "target_step": 3,
       "params": {{"evidence": "..."}}, "reason": "Factual: unsupported claim"}}
-], "optional_improvements": [...], "conflicts_resolved": [...]}}"""
+], "optional_improvements": [...], "conflicts_resolved": [...]}}
+---
+
+Logic Critique:
+{logic_critique}
+
+External Critique:
+{external_critique}
+{evaluator_feedback}"""
 
 
 def _format_evaluator_feedback(

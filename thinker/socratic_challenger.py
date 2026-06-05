@@ -17,38 +17,55 @@ from models import ReasoningChain, ReasoningStep
 CHALLENGE_SYSTEM_PROMPT = """You are a Socratic challenger for agricultural reasoning chains.
 Your role is to ask probing questions that expose weaknesses in reasoning."""
 
-CHALLENGE_PROMPT = """Here is an agricultural reasoning chain. Generate 3-5 Socratic questions
-that challenge its INTERNAL completeness and domain rigor. Focus on what the chain ITSELF
-is missing — do NOT check logical structure (that is handled elsewhere).
+CHALLENGE_PROMPT = """Generate 3-5 Socratic questions challenging this chain's INTERNAL completeness.
+Focus on what the chain ITSELF is missing — do NOT check logical structure.
+
+WEAKNESS TYPES (target ONLY these):
+- missing_edge_case: domain condition not addressed (soil type, climate zone, growth stage, timing)
+- overgeneralization: conclusion too broad ("always works" when it depends on conditions)
+- alternative_ignored: viable alternative not considered (biological vs chemical control)
+- domain_constraint: missing domain knowledge (pH range, temperature thresholds, compatibility)
+
+DO NOT target: logical gaps, contradictions, step ordering.
+
+OUTPUT (JSON array only):
+[{{"question": "...", "target_step": N, "issue_type": "missing_edge_case|overgeneralization|alternative_ignored|domain_constraint"}}]
+If no weaknesses, output: []
+
+---
 
 Question: {question}
 Answer: {answer}
 
 Reasoning Chain:
-{chain_text}
-
-Target these weakness types ONLY:
-- missing_edge_case: A domain condition not addressed (e.g., soil type, climate zone, crop variety,
-  growth stage, regional difference, timing of application)
-- overgeneralization: A conclusion too broad for the evidence (e.g., "always works" when it depends
-  on conditions, "all crops" when only some are affected)
-- alternative_ignored: A viable alternative explanation or approach not considered
-  (e.g., biological control vs chemical, different fertilizer type)
-- domain_constraint: Missing agricultural domain knowledge (e.g., pH range, temperature thresholds,
-  water requirements, compatibility between treatments, residue limits)
-
-DO NOT target: logical gaps, contradictions, step ordering — these are reviewed separately.
-
-Output (JSON array only):
-[{{"question": "Your Socratic question here", "target_step": N, "issue_type": "missing_edge_case|overgeneralization|alternative_ignored|domain_constraint"}}]
-
-If the chain has no significant weaknesses, output: []"""
+{chain_text}"""
 
 
 REVISE_SYSTEM_PROMPT = """You are an agricultural reasoning expert revising a reasoning chain
 based on Socratic challenges. You may call retrieve: <query> to get evidence when needed."""
 
-REVISE_PROMPT = """Revise this reasoning chain to address the Socratic challenges below.
+REVISE_PROMPT = """Revise this reasoning chain to address the Socratic challenges.
+
+INSTRUCTIONS:
+1. For each challenge, either:
+   - Strengthen the step with evidence (use retrieve: <query> if you need facts)
+   - Add a missing step
+   - Revise overgeneralized claims
+   - Acknowledge the limitation in confidence
+2. Preserve the overall chain structure (step types, conclusion)
+3. Keep unchallenged steps unchanged
+
+When you need evidence, output: retrieve: <search query>
+When done, output the revised chain as JSON:
+
+```json
+{{"steps": [
+  {{"step": 1, "type": "context_setup", "content": "...", "evidence": "...", "confidence": "high"}},
+  ...
+]}}
+```
+
+---
 
 Question: {question}
 Answer: {answer}
@@ -57,26 +74,7 @@ Original Chain:
 {chain_text}
 
 Socratic Challenges:
-{challenges_text}
-
-Instructions:
-1. For each challenge, either:
-   - Strengthen the step with evidence (use retrieve: <query> if you need facts)
-   - Add a missing step
-   - Revise overgeneralized claims
-   - Acknowledge the limitation in confidence
-2. Preserve the overall chain structure (step types, conclusion)
-3. Keep steps that are not challenged unchanged
-
-When you need evidence, output: retrieve: <search query>
-When done revising, output the revised chain as JSON:
-
-```json
-{{"steps": [
-  {{"step": 1, "type": "context_setup", "content": "...", "evidence": "...", "confidence": "high"}},
-  ...
-]}}
-```"""
+{challenges_text}"""
 
 
 def _parse_challenges(raw: str) -> List[dict]:
