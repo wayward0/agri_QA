@@ -149,6 +149,7 @@ def run_review(
     difficulty: DifficultyLevel,
     rag_tool,
     llm_call,
+    answer: str = "",
 ) -> Tuple[UnifiedActions, List[ReviewCritique]]:
     """Run the appropriate review phases based on difficulty.
 
@@ -158,14 +159,15 @@ def run_review(
         difficulty: Difficulty level (determines which phases to run).
         rag_tool: RAGTool instance.
         llm_call: Callable matching LLMCallFn protocol.
+        answer: Original answer text for semantic drift detection.
 
     Returns:
         Tuple of (unified_actions, critique_history).
     """
     critiques = []
 
-    # Phase A: always run
-    logic_critique = review_logic(chain, llm_call)
+    # Phase A: logic + semantic alignment (always run)
+    logic_critique = review_logic(chain, llm_call, answer=answer)
     critiques.append(logic_critique)
 
     # Phase B: Medium and Hard

@@ -247,18 +247,17 @@ Round 2:
 - 类型多样性 (0.20)
 - 高置信度比例 (0.15)
 
-**苏格拉底自质疑** (`socratic_challenger.py`): 在自洽性选择后执行，对选出的最优链进行自我挑战:
+**苏格拉底自质疑** (`socratic_challenger.py`): 在自洽性选择后执行，聚焦推理链的**内省** — 检查自身完备性和领域严谨性:
 
 ```
 选出的最优推理链
   │
   ▼
-Socratic Challenge: 生成 3-5 个质疑问题
-  - 无证据支撑的事实断言 (unsupported_claim)
-  - 步骤间的逻辑跳跃 (logical_gap)
-  - 未考虑的替代解释 (alternative_ignored)
-  - 遗漏的边界条件 (missing_edge_case)
-  - 过度泛化的结论 (overgeneralization)
+Socratic Challenge: 生成 3-5 个质疑问题 (聚焦内省)
+  - missing_edge_case: 遗漏的领域边界条件 (土壤类型、气候带、生长阶段)
+  - overgeneralization: 过度泛化的结论 ("所有作物" vs 实际仅部分适用)
+  - alternative_ignored: 未考虑的替代方案 (生物防治 vs 化学防治)
+  - domain_constraint: 缺失的领域约束 (pH 范围、温度阈值、药剂兼容性)
   │
   ▼
 Revision: 基于质疑修正推理链
@@ -269,13 +268,15 @@ Revision: 基于质疑修正推理链
 输出: 修正后的 ReasoningChain (draft_chain)
 ```
 
+> **与 Reviewer 的分工**: Socratic 聚焦"内省"（推理链自身的完备性），Reviewer 聚焦"对齐"（与原始 QA 的语义一致性和结构逻辑）。两者不重复检查。
+
 ### 审查器 (reviewer/)
 
 三阶段审查，逐级深入:
 
-**Phase A — 逻辑审查** (`logic_reviewer.py`):
-- 检查相邻步骤间的逻辑缺口
-- 检测矛盾、循环推理、非序列
+**Phase A — 逻辑 + 语义对齐审查** (`logic_reviewer.py`):
+- 结构逻辑: 检查相邻步骤间的逻辑缺口、矛盾、循环推理
+- 语义对齐: 检查推理链结论是否与原始 Answer 发生语义漂移
 - 纯 LLM 分析，不调用 RAG
 
 **Phase B — 事实核查** (`external_reviewer.py`):

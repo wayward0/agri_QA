@@ -18,7 +18,8 @@ CHALLENGE_SYSTEM_PROMPT = """You are a Socratic challenger for agricultural reas
 Your role is to ask probing questions that expose weaknesses in reasoning."""
 
 CHALLENGE_PROMPT = """Here is an agricultural reasoning chain. Generate 3-5 Socratic questions
-that challenge its weakest points. Each question should expose a specific weakness.
+that challenge its INTERNAL completeness and domain rigor. Focus on what the chain ITSELF
+is missing — do NOT check logical structure (that is handled elsewhere).
 
 Question: {question}
 Answer: {answer}
@@ -26,15 +27,20 @@ Answer: {answer}
 Reasoning Chain:
 {chain_text}
 
-Target these weakness types:
-- unsupported_claim: A factual assertion with no evidence cited
-- logical_gap: A logical jump between steps without justification
-- alternative_ignored: An alternative explanation not considered
-- missing_edge_case: A condition or exception not addressed
-- overgeneralization: A conclusion that is too broad for the evidence
+Target these weakness types ONLY:
+- missing_edge_case: A domain condition not addressed (e.g., soil type, climate zone, crop variety,
+  growth stage, regional difference, timing of application)
+- overgeneralization: A conclusion too broad for the evidence (e.g., "always works" when it depends
+  on conditions, "all crops" when only some are affected)
+- alternative_ignored: A viable alternative explanation or approach not considered
+  (e.g., biological control vs chemical, different fertilizer type)
+- domain_constraint: Missing agricultural domain knowledge (e.g., pH range, temperature thresholds,
+  water requirements, compatibility between treatments, residue limits)
+
+DO NOT target: logical gaps, contradictions, step ordering — these are reviewed separately.
 
 Output (JSON array only):
-[{{"question": "Your Socratic question here", "target_step": N, "issue_type": "unsupported_claim|logical_gap|alternative_ignored|missing_edge_case|overgeneralization"}}]
+[{{"question": "Your Socratic question here", "target_step": N, "issue_type": "missing_edge_case|overgeneralization|alternative_ignored|domain_constraint"}}]
 
 If the chain has no significant weaknesses, output: []"""
 

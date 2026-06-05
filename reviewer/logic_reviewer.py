@@ -13,23 +13,29 @@ from models import ReasoningChain, ReviewCritique
 
 SYSTEM_PROMPT = "You are a logical reasoning critic for agricultural reasoning chains."
 
-LOGIC_REVIEW_PROMPT = """You are a logical reasoning critic. Analyze this agricultural reasoning chain
-for internal logic issues. Do NOT check facts — only check reasoning structure.
+LOGIC_REVIEW_PROMPT = """You are an alignment critic. Analyze this agricultural reasoning chain for
+two things: (1) structural logic integrity, and (2) semantic alignment with the original answer.
+Do NOT check facts or domain completeness — those are handled separately.
 
-For each adjacent step pair (N, N+1):
-1. Is there a logical connection?
-2. Is there a missing intermediate step?
+STRUCTURAL LOGIC — for each adjacent step pair (N, N+1):
+1. Is there a logical connection? (logical_gap)
+2. Any contradictions between non-adjacent steps? (contradiction)
+3. Any circular reasoning? (circular)
 
-For all steps:
-3. Any contradictions between non-adjacent steps?
-4. Any circular reasoning?
-5. Does the conclusion follow from the premises?
+SEMANTIC ALIGNMENT — for the chain as a whole:
+4. Does the final conclusion align with the original Answer? (semantic_drift)
+   - Does the chain's conclusion contradict, misrepresent, or significantly deviate from the Answer?
+   - Does the chain address the SAME question the Answer addresses?
+5. Does the conclusion follow from the premises? (non_sequitur)
 
 Reasoning Chain:
 {chain}
 
+Original Answer (for alignment check):
+{answer}
+
 Output (JSON array only, no other text):
-[{{"step": N, "issue_type": "logical_gap|missing_step|contradiction|circular|non_sequitur",
+[{{"step": N, "issue_type": "logical_gap|contradiction|circular|semantic_drift|non_sequitur",
   "description": "...", "severity": "high|medium|low"}}]
 
 If no issues found, output an empty array: []"""
@@ -60,18 +66,19 @@ def _parse_issues(raw: str) -> List[dict]:
     return []
 
 
-def review_logic(chain: ReasoningChain, llm_call) -> ReviewCritique:
-    """Run Phase A: internal logic review.
+def review_logic(chain: ReasoningChain, llm_call, answer: str = "") -> ReviewCritique:
+    """Run Phase A: logic + semantic alignment review.
 
     Args:
         chain: The reasoning chain to review.
         llm_call: Callable matching LLMCallFn protocol.
+        answer: Original answer text for semantic drift detection.
 
     Returns:
         ReviewCritique with phase="A_logic".
     """
     chain_text = chain.to_text()
-    prompt = LOGIC_REVIEW_PROMPT.format(chain=chain_text)
+    prompt = LOGIC_REVIEW_PROMPT.format(chain=chain_text, answer=answer)
     raw = llm_call(prompt, system=SYSTEM_PROMPT, temperature=0.1, max_tokens=2048)
     issues = _parse_issues(raw)
     return ReviewCritique(phase="A_logic", issues=issues)

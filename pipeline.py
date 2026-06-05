@@ -184,7 +184,7 @@ def process_item(
 
     # Stage 2: Reviewer (standard model)
     unified_actions, critiques = run_review(
-        draft_chain, question, difficulty, rag_tool, reviewer_call
+        draft_chain, question, difficulty, rag_tool, reviewer_call, answer=answer
     )
 
     # Stage 3: Reviser (cheap model, skip for Easy)
@@ -215,7 +215,7 @@ def process_item(
     # Quality gate: Hard path with low score → one more review+revise
     if difficulty == DifficultyLevel.HARD and scores.overall < config.QUALITY_GATE_THRESHOLD:
         actions2, critiques2 = run_review(
-            revised_chain, question, difficulty, rag_tool, reviewer_call
+            revised_chain, question, difficulty, rag_tool, reviewer_call, answer=answer
         )
         revised_chain = execute_revision(revised_chain, actions2, reviser_call, rag_tool)
         critiques.extend(critiques2)
