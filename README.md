@@ -190,7 +190,7 @@ python rebuild_indices.py
 ### 4. 运行 Pipeline
 
 ```bash
-# 运行完整 pipeline
+# 运行完整 pipeline (异步并发，默认 10 并发)
 python pipeline.py
 
 # 或在 Python 中调用
@@ -538,7 +538,8 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `API_CALL_INTERVAL` | 0.5s | item 间限流间隔 |
+| `MAX_CONCURRENCY` | 10 | 异步并发 item 数量 |
+| `API_CALL_INTERVAL` | 0.5s | item 间限流间隔 (串行模式) |
 | `CONSECUTIVE_FAILURE_LIMIT` | 3 | 连续失败上限 |
 
 ## 输出格式

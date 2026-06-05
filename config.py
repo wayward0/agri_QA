@@ -57,8 +57,9 @@ EVAL_WEIGHTS = {
 }
 
 # --- Pipeline ---
-API_CALL_INTERVAL = 0.5  # seconds between items
+API_CALL_INTERVAL = 0.5  # seconds between items (legacy, unused in async mode)
 CONSECUTIVE_FAILURE_LIMIT = 3
+MAX_CONCURRENCY = 10  # max concurrent items in async pipeline
 
 # --- Paths ---
 BASE_DIR = Path(__file__).parent

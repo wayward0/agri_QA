@@ -3,6 +3,7 @@
 Wires dependencies, runs stages, handles checkpointing and error recovery.
 """
 
+import asyncio
 import json
 import os
 import time
@@ -299,18 +300,36 @@ def _save_checkpoint(results: List[PipelineItem], path: Path):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def run_pipeline(
+async def _process_item_async(
+    item, item_id, rag_tool, llm_call,
+    classifier_call, thinker_call, reviewer_call,
+    reviser_call, evaluator_call, semaphore,
+):
+    """Run one item in a thread pool, bounded by semaphore."""
+    async with semaphore:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            process_item,
+            item, item_id, rag_tool, llm_call,
+            classifier_call, thinker_call, reviewer_call,
+            reviser_call, evaluator_call,
+        )
+
+
+async def run_pipeline_async(
     n_items: int = 1000,
     resume: bool = True,
 ):
-    """Main entry point.
+    """Async pipeline with concurrent item processing.
 
     Args:
         n_items: Number of items to process.
         resume: If True, resume from checkpoint if available.
     """
     print("=" * 60)
-    print("Agricultural Reasoning Pipeline")
+    print("Agricultural Reasoning Pipeline (Async)")
+    print(f"Concurrency: {config.MAX_CONCURRENCY}")
     print("=" * 60)
 
     # Load RAG tool
@@ -352,32 +371,46 @@ def run_pipeline(
         start_idx = len(results)
         print(f"Resumed {start_idx} items.")
 
-    # Process remaining items
-    consecutive_failures = 0
-    for i in tqdm(range(start_idx, len(items)), desc="Processing"):
-        item = items[i]
+    # Build async tasks for remaining items
+    semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY)
+    tasks = []
+    for i in range(start_idx, len(items)):
         item_id = f"item_{i:04d}"
-        try:
-            result = process_item(
-                item, item_id, rag_tool, llm_call,
-                classifier_call, thinker_call, reviewer_call,
-                reviser_call, evaluator_call,
-            )
-            results.append(result)
-            consecutive_failures = 0
+        task = _process_item_async(
+            items[i], item_id, rag_tool, llm_call,
+            classifier_call, thinker_call, reviewer_call,
+            reviser_call, evaluator_call, semaphore,
+        )
+        tasks.append((i, item_id, task))
 
-            # Checkpoint after each item
-            _save_checkpoint(results, config.PATH_OUTPUT)
+    # Process in batches, checkpoint after each batch
+    total = len(tasks)
+    completed = 0
+    consecutive_failures = 0
+    pbar = tqdm(total=total, desc="Processing")
 
-        except Exception as e:
-            print(f"\nError processing {item_id}: {e}")
-            consecutive_failures += 1
-            if consecutive_failures >= config.CONSECUTIVE_FAILURE_LIMIT:
-                print(f"Too many consecutive failures ({consecutive_failures}). Stopping.")
-                break
+    for batch_start in range(0, total, config.MAX_CONCURRENCY):
+        batch = tasks[batch_start:batch_start + config.MAX_CONCURRENCY]
+        batch_coros = [t for _, _, t in batch]
+        batch_results = await asyncio.gather(*batch_coros, return_exceptions=True)
 
-        # Rate limiting
-        time.sleep(config.API_CALL_INTERVAL)
+        for (_, item_id, _), result in zip(batch, batch_results):
+            if isinstance(result, Exception):
+                print(f"\nError processing {item_id}: {result}")
+                consecutive_failures += 1
+            else:
+                results.append(result)
+                consecutive_failures = 0
+            completed += 1
+
+        pbar.update(len(batch))
+        _save_checkpoint(results, config.PATH_OUTPUT)
+
+        if consecutive_failures >= config.CONSECUTIVE_FAILURE_LIMIT:
+            print(f"\nToo many consecutive failures ({consecutive_failures}). Stopping.")
+            break
+
+    pbar.close()
 
     # Final save
     _save_checkpoint(results, config.PATH_OUTPUT)
@@ -394,6 +427,14 @@ def run_pipeline(
         scores = [r.quality_scores.overall for r in results if r.quality_scores]
         if scores:
             print(f"Average quality score: {sum(scores)/len(scores):.3f}")
+
+
+def run_pipeline(
+    n_items: int = 1000,
+    resume: bool = True,
+):
+    """Main entry point — runs the async pipeline."""
+    asyncio.run(run_pipeline_async(n_items, resume))
 
 
 if __name__ == "__main__":
