@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
+output/
+data/index/
+data/chunks/
+data/agthoughts/
+*.pkl
+*.index
+.env
+AgThoughts.json

@@ -1,0 +1,491 @@
+# AgriQA — 农业问答推理链增强系统
+
+基于多智能体协作的农业问答推理链自动生成与质量优化系统。输入农业 QA 对，输出带有结构化推理链、证据引用和质量评分的增强数据集。
+
+## 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Pipeline Orchestrator                        │
+│                          (pipeline.py)                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌────────┐   ┌──────────┐
+│  │Classifier│──▶│ Thinker  │──▶│ Reviewer │──▶│Reviser │──▶│Evaluator │
+│  │ Stage 0  │   │ Stage 1  │   │ Stage 2  │   │Stage 3 │   │ Stage 4  │
+│  └──────────┘   └──────────┘   └──────────┘   └────────┘   └──────────┘
+│       │              │               │              │            │
+│  deepseek-v4    deepseek-v4     deepseek-v4   deepseek-v4  deepseek-v4
+│    -flash         -pro            -pro          -flash        -pro
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                    RAG Knowledge Base                        │   │
+│  │  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌──────────────┐  │   │
+│  │  │  FAISS  │  │  BM25   │  │ RRF Fusion│  │  Reranker    │  │   │
+│  │  │ (dense) │  │(sparse) │  │  (hybrid) │  │(bge-reranker)│  │   │
+│  │  └─────────┘  └─────────┘  └──────────┘  └──────────────┘  │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 数据流
+
+```
+输入: QA 对 {Question, Answer, Question Type}
+  │
+  ▼
+Stage 0: 难度分类 (Classifier)
+  │  单次 LLM 调用, temperature=0.0
+  │  输出: EASY / MEDIUM / HARD
+  │
+  ▼
+Stage 1: 推理生成 (Thinker)
+  │  ReAct 框架: Thought → Action(RAG) → Observation 循环
+  │  HARD 题: 自洽性采样 (3 条路径, 温度 [0.3, 0.7, 1.0], 择优)
+  │  其他: 单路径
+  │  输出: ReasoningChain (draft_chain)
+  │
+  ▼
+Stage 2: 多阶段审查 (Reviewer)
+  │  Phase A: 逻辑审查 (纯 LLM, 无 RAG)
+  │  Phase B: 事实核查 (RAG 增强, MEDIUM/HARD)
+  │  Phase C: 整合为原子操作
+  │  输出: UnifiedActions + ReviewCritique
+  │
+  ▼
+Stage 3: 修订执行 (Reviser)
+  │  按优先级执行原子操作:
+  │    remove_step → merge_steps → revise_step
+  │    → insert_step → add_evidence → adjust_confidence
+  │  ~50% 操作为程序化 (无需 LLM)
+  │  输出: ReasoningChain (revised_chain)
+  │
+  ▼
+Stage 4: 质量评估 (Evaluator)
+  │  LLM-as-Judge: 忠实度 (1-5), 逻辑完整性 (1-5)
+  │  自动指标: 结构得分, 信息密度, 可追溯性
+  │  加权总分 = faith*0.25 + structure*0.20 + density*0.15
+  │            + logic*0.25 + traceability*0.15
+  │  输出: QualityScores
+  │
+  ▼
+质量门控 (仅 HARD):
+  │  若 overall < 3.0 → 再次 Review + Revise + Evaluate
+  │
+  ▼
+输出: PipelineItem (包含全部中间结果)
+```
+
+## 目录结构
+
+```
+agri_QA/
+├── config.py                   # 全局配置 (环境变量覆盖)
+├── models.py                   # 数据模型 (Protocol + dataclass)
+├── pipeline.py                 # Pipeline 编排器 (唯一入口)
+├── llm_client.py               # LLM 调用抽象 (OpenAI 兼容)
+├── rebuild_indices.py          # 重建 FAISS + BM25 索引
+├── fetch_from_dumps.py         # Wikipedia dump 离线解析器
+├── run_fetch.py                # Wikipedia API 在线抓取器
+├── AgThoughts.json             # 源 QA 数据集
+│
+├── classifier/                 # Stage 0: 难度分类
+│   └── difficulty_classifier.py
+├── thinker/                    # Stage 1: 推理生成
+│   ├── react_generator.py      #   ReAct 推理循环
+│   └── self_consistency.py     #   自洽性多路径采样
+├── reviewer/                   # Stage 2: 多阶段审查
+│   ├── logic_reviewer.py       #   Phase A: 逻辑审查
+│   ├── external_reviewer.py    #   Phase B: 事实核查
+│   └── integrator.py           #   Phase C: 整合
+├── reviser/                    # Stage 3: 修订执行
+│   └── reviser.py
+├── evaluator/                  # Stage 4: 质量评估
+│   ├── auto_metrics.py         #   自动指标 (结构/密度/可追溯性)
+│   ├── llm_judge.py            #   LLM-as-Judge (忠实度/逻辑完整性)
+│   └── ppl_scorer.py           #   困惑度评分 (可选, GPT-2)
+│
+├── rag/                        # RAG 检索增强
+│   ├── rag_tool.py             #   统一检索接口
+│   ├── retriever.py            #   混合检索: FAISS + BM25 + RRF
+│   ├── embedding_client.py     #   Embedding API 客户端 (bge-m3)
+│   ├── reranker.py             #   Reranker API 客户端 (bge-reranker-v2-m3)
+│   ├── knowledge_builder.py    #   知识库构建器
+│   └── query_processor.py      #   查询改写 + 实体抽取
+│
+├── data/
+│   ├── agthoughts/sample_1000.json   # 分层抽样 1000 条
+│   ├── chunks/passages.jsonl         # 分块后的 Wikipedia 段落
+│   └── index/
+│       ├── faiss.index               # FAISS 密集索引 (1024 维)
+│       ├── bm25.pkl                  # BM25 稀疏索引
+│       └── metadata.json             # 段落元数据
+│
+└── output/
+    └── enhanced_dataset.json         # Pipeline 输出 (含 checkpoint)
+```
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+主要依赖:
+- `openai` — LLM API 调用
+- `faiss-cpu` — 向量检索
+- `rank-bm25` — BM25 稀疏检索
+- `tqdm` — 进度条
+
+### 2. 配置 API
+
+编辑 `config.py` 或设置环境变量:
+
+```bash
+# LLM API
+export LLM_API_BASE_URL="https://ai.centos.hk/v1"
+export AI_CENTOS_API_KEY="your-key"
+
+# 模型分层
+export MODEL_LIGHT="deepseek-v4-flash"      # 分类/修订
+export MODEL_STANDARD="deepseek-v4-pro"     # 审查/评估
+export MODEL_PREMIUM="deepseek-v4-pro"      # 核心推理
+
+# Embedding API
+export EMBEDDING_API_BASE_URL="https://api.moark.com/v1"
+export EMBEDDING_API_KEY="your-key"
+export EMBEDDING_MODEL="bge-m3"
+
+# Reranker API
+export RERANKER_API_URL="https://api.moark.com/v1/rerank"
+export RERANKER_API_KEY="your-key"
+export RERANKER_MODEL="bge-reranker-v2-m3"
+```
+
+### 3. 构建知识库索引
+
+```bash
+# 从 Wikipedia 抓取农业文章 (需要网络访问)
+python run_fetch.py
+
+# 重建 FAISS + BM25 索引
+python rebuild_indices.py
+```
+
+### 4. 运行 Pipeline
+
+```bash
+# 运行完整 pipeline
+python pipeline.py
+
+# 或在 Python 中调用
+python -c "
+from pipeline import run_pipeline
+run_pipeline(n_items=100, resume=True)
+"
+```
+
+输出保存在 `output/enhanced_dataset.json`，每个 item 处理后自动 checkpoint。
+
+## 核心模块详解
+
+### 难度分类器 (classifier/)
+
+单次 LLM 调用，将 QA 对分为 EASY / MEDIUM / HARD 三级。使用正则词边界匹配解析输出，取最后一个匹配结果以处理 LLM "先推理再给答案" 的输出模式。
+
+```python
+from classifier.difficulty_classifier import classify_difficulty
+result = classify_difficulty(question, answer, llm_call)
+# result.difficulty: DifficultyLevel.EASY / MEDIUM / HARD
+```
+
+**难度路由策略:**
+
+| 难度 | Thinker | Reviewer | Reviser | 质量门控 |
+|------|---------|----------|---------|---------|
+| EASY | 单路径 | Phase A 仅逻辑审查 | 跳过 | 无 |
+| MEDIUM | 单路径 | Phase A + B (含事实核查) | 执行 | 无 |
+| HARD | 3 路径自洽性 | Phase A + B + C | 执行 | score < 3.0 重来 |
+
+### 推理生成器 (thinker/)
+
+**ReAct 框架** (`react_generator.py`): Thought → Action → Observation 循环
+
+```
+Thought: 分析问题, 确定需要什么信息
+Action:  retrieve: <搜索查询>  或  FINISH
+Observation: RAG 返回的证据
+... (最多 5 轮)
+FINISH → 输出结构化 JSON 推理链
+```
+
+**自洽性采样** (`self_consistency.py`): 对 HARD 题生成 3 条路径 (温度 0.3/0.7/1.0)，按以下标准择优:
+- 步骤数 (3-7 步最优, 权重 0.30)
+- 证据利用率 (0.35)
+- 类型多样性 (0.20)
+- 高置信度比例 (0.15)
+
+### 审查器 (reviewer/)
+
+三阶段审查，逐级深入:
+
+**Phase A — 逻辑审查** (`logic_reviewer.py`):
+- 检查相邻步骤间的逻辑缺口
+- 检测矛盾、循环推理、非序列
+- 纯 LLM 分析，不调用 RAG
+
+**Phase B — 事实核查** (`external_reviewer.py`):
+- 对含事实断言的步骤 (knowledge_application, causal_reasoning, evidence_integration) 检索 RAG 证据
+- 检查: 事实正确性、证据可靠性、完整性、术语准确性、可操作性
+
+**Phase C — 整合** (`integrator.py`):
+- 将 Phase A/B 的审查意见合并为结构化原子操作
+- 操作优先级: P0 (必须修复: 事实错误、矛盾) → P1 (应修复: 缺失步骤) → P2 (可选: 风格)
+
+### 修订器 (reviser/)
+
+按特定顺序执行原子操作，避免索引冲突:
+
+1. `remove_step` — 删除步骤 (程序化)
+2. `merge_steps` — 合并步骤 (LLM)
+3. `revise_step` — 修改步骤 (LLM)
+4. `insert_step` — 插入步骤 (LLM)
+5. `add_evidence` — 补充证据 (程序化)
+6. `adjust_confidence` — 调整置信度 (程序化)
+
+约 50% 的操作为程序化执行，无需 LLM 调用。
+
+### 评估器 (evaluator/)
+
+**自动指标** (`auto_metrics.py`): 纯函数，无外部依赖
+- `structure_score`: 是否有 context_setup 和 conclusion，步骤数 3-7
+- `information_density`: 非公式化词汇占比
+- `traceability`: 有证据引用的步骤占比
+
+**LLM-as-Judge** (`llm_judge.py`):
+- `faithfulness` (1-5): 每个事实断言是否有证据支持
+- `logical_completeness` (1-5): 推理链是否覆盖所有必要步骤
+
+**加权总分:**
+
+```
+overall = faithfulness/5 × 0.25
+        + structure × 0.20
+        + information_density × 0.15
+        + logical_completeness/5 × 0.25
+        + traceability × 0.15
+```
+
+## RAG 检索系统
+
+### 混合检索架构
+
+```
+Query
+  │
+  ├─▶ FAISS (密集检索) ──┐
+  │   bge-m3, 1024 维     ├─▶ RRF 融合 ─▶ Reranker ─▶ Top-K
+  └─▶ BM25 (稀疏检索) ──┘   (k=60)    (bge-reranker)
+```
+
+**密集检索**: FAISS IndexFlatIP，使用 bge-m3 API 编码 (1024 维)
+
+**稀疏检索**: BM25Okapi，基于词频的稀疏匹配
+
+**融合**: Reciprocal Rank Fusion (RRF)
+```
+RRF_score(d) = Σ 1/(k + rank_i(d))  对每个检索器的排名
+```
+
+**重排序**: bge-reranker-v2-m3 交叉编码器，对 RRF 融合后的候选集进行精排 (最多 25 条)
+
+### Embedding 客户端
+
+```python
+from rag.embedding_client import EmbeddingClient
+
+embedder = EmbeddingClient(
+    base_url="https://api.moark.com/v1",
+    api_key="your-key",
+    model="bge-m3"
+)
+vectors = embedder.encode(["query text"], normalize_embeddings=True)
+# 返回 1024 维向量
+```
+
+### Reranker 客户端
+
+```python
+from rag.reranker import RerankerClient
+
+reranker = RerankerClient(
+    base_url="https://api.moark.com/v1/rerank",
+    api_key="your-key",
+    model="bge-reranker-v2-m3"
+)
+results = reranker.rerank("query", ["doc1", "doc2", "doc3"], top_k=2)
+# 返回 [{"index": 0, "relevance_score": 0.95}, ...]
+```
+
+## 模型分层策略
+
+为平衡成本与质量，不同阶段使用不同模型:
+
+| 阶段 | 模型层级 | 模型 | 理由 |
+|------|---------|------|------|
+| Classifier | LIGHT | deepseek-v4-flash | 简单分类，快速低成本 |
+| Thinker | PREMIUM | deepseek-v4-pro | 核心推理，需最高质量 |
+| Reviewer | STANDARD | deepseek-v4-pro | 审查整合，需均衡质量 |
+| Reviser | LIGHT | deepseek-v4-flash | 执行结构化操作，快速即可 |
+| Evaluator | STANDARD | deepseek-v4-pro | 质量评估，需准确判断 |
+
+所有模型通过 `create_stage_caller()` 绑定默认模型，支持按调用覆盖:
+
+```python
+from llm_client import create_llm_caller, create_stage_caller
+
+base = create_llm_caller(api_key="...", model="deepseek-v4-pro")
+classifier = create_stage_caller(base, "deepseek-v4-flash")
+# classifier 使用 deepseek-v4-flash，可通过 model= 参数覆盖
+```
+
+## 数据模型
+
+所有类型定义在 `models.py`，模块间通过类型而非导入耦合:
+
+| 类型 | 说明 | 关键字段 |
+|------|------|---------|
+| `Evidence` | RAG 检索到的证据 | content, source, relevance_score |
+| `ReasoningStep` | 推理链单步 | step, type (7种), content, evidence, confidence |
+| `ReasoningChain` | 完整推理链 | steps, react_rounds, self_consistency_selected |
+| `QualityScores` | 五维质量评分 | faithfulness, structure, density, logic, traceability, overall |
+| `PipelineItem` | 流经 pipeline 的完整 item | 含全部中间结果和元数据 |
+| `LLMCallFn` | LLM 调用协议 | `(prompt, system, temperature, max_tokens, model) -> str` |
+
+**推理步骤类型:** context_setup, knowledge_application, causal_reasoning, comparison, condition_analysis, evidence_integration, conclusion
+
+**审查操作类型:** add_evidence, revise_step, insert_step, remove_step, merge_steps, adjust_confidence
+
+## 配置参数
+
+所有参数在 `config.py` 中定义，支持环境变量覆盖:
+
+### RAG 参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `RAG_TOP_K_BACKGROUND` | 5 | 背景检索返回条数 |
+| `RAG_TOP_K_FACT_CHECK` | 3 | 事实核查返回条数 |
+| `RAG_TOP_K_GAP_FILL` | 3 | 缺口填充返回条数 |
+| `RRF_K` | 60 | RRF 融合常数 |
+| `CHUNK_MIN_TOKENS` | 200 | 最小分块长度 |
+| `CHUNK_MAX_TOKENS` | 400 | 最大分块长度 |
+
+### Thinker 参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `REACT_MAX_ROUNDS` | 5 | ReAct 最大循环轮数 |
+| `SELF_CONSISTENCY_N` | 3 | 自洽性采样路径数 |
+| `REACT_TEMPERATURES` | [0.3, 0.7, 1.0] | 采样温度列表 |
+
+### 评估参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `QUALITY_GATE_THRESHOLD` | 3.0 | HARD 题质量门控阈值 |
+| `MAX_REVISION_ITERATIONS` | 1 | 最大修订迭代次数 |
+| `EVAL_WEIGHTS` | faith:0.25, struct:0.20, density:0.15, logic:0.25, trace:0.15 | 五维权重 |
+
+### Pipeline 控制
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `API_CALL_INTERVAL` | 0.5s | item 间限流间隔 |
+| `CONSECUTIVE_FAILURE_LIMIT` | 3 | 连续失败上限 |
+
+## 输出格式
+
+`output/enhanced_dataset.json` 为 JSON 数组，每个元素:
+
+```json
+{
+  "id": "item_0000",
+  "question": "How do I apply phosphorus fertilizer...",
+  "answer": "To address your bell peppers' needs...",
+  "question_type": "Crop Management Questions",
+  "difficulty": "hard",
+  "draft_chain": {
+    "steps": [
+      {
+        "step": 1,
+        "type": "context_setup",
+        "content": "...",
+        "evidence": "...",
+        "confidence": "high"
+      }
+    ],
+    "react_rounds": 3,
+    "self_consistency_selected": true
+  },
+  "revised_chain": { "steps": [...] },
+  "quality_scores": {
+    "faithfulness": 3.0,
+    "structure": 1.0,
+    "information_density": 0.969,
+    "logical_completeness": 3.0,
+    "traceability": 0.667,
+    "overall": 0.745
+  },
+  "critique_history": [...],
+  "metadata": {
+    "classification_raw": "hard",
+    "n_samples": 3,
+    "models": {
+      "classifier": "deepseek-v4-flash",
+      "thinker": "deepseek-v4-pro",
+      "reviewer": "deepseek-v4-pro",
+      "reviser": "deepseek-v4-flash",
+      "evaluator": "deepseek-v4-pro"
+    }
+  }
+}
+```
+
+## 知识库构建
+
+### 方式一: 在线抓取 (需 Wikipedia API 访问)
+
+```bash
+python run_fetch.py
+```
+
+通过 Wikipedia Category API 发现农业文章标题，REST API 抓取内容，自动进行相关性过滤。
+
+### 方式二: 离线解析 (从 dump 文件)
+
+```bash
+python fetch_from_dumps.py
+```
+
+从 Wikipedia multistream dump (.bz2) 中解析农业文章，无需 API 访问但需下载 dump 文件。
+
+### 重建索引
+
+```bash
+python rebuild_indices.py
+```
+
+对已有文章重新分块、编码、构建 FAISS + BM25 索引。切换 embedding 模型后需重建。
+
+## 故障排除
+
+**LLM 返回空响应**: deepseek-v4-pro 内部推理 token 会消耗 max_tokens 预算，确保 max_tokens >= 256。
+
+**Reranker 400 错误**: Reranker API 最多接受 25 条文档，代码已自动限制候选数量。
+
+**分类结果不稳定**: deepseek-v4 即使 temperature=0.0 也可能因内部推理产生不同输出，已通过正则词边界匹配 + 取最后匹配优化。
+
+**Pipeline 卡住**: 检查网络连接，LLM API 超时设为 120 秒，自动重试 3 次。

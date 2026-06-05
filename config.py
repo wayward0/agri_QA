@@ -1,48 +1,72 @@
-"""Pipeline v2 configuration — all constants in one place."""
+"""Project configuration constants.
 
-# --- LLM API (Mimo Token Plan) ---
-API_BASE_URL = "https://token-plan-cn.xiaomimimo.com/v1"
-API_KEY = "tp-coc27q9qov5vmpxux47np1vydcwk7fnv23z97v1cl8y4pgyy"
+This file imports nothing from the project. Only os and pathlib.
+No module should import config directly — pipeline.py reads config and passes values.
+"""
 
-# Model assignments
-LLM_MODEL_GENERATE = "mimo-v2.5-pro"     # Reasoning chain generation
-LLM_MODEL_TRANSLATE = "mimo-v2.5"        # KG translation (lightweight)
-LLM_MODEL_VERIFY = "mimo-v2.5-pro"       # Post-verification
+import os
+from pathlib import Path
+
+# --- API ---
+API_BASE_URL = os.environ.get("LLM_API_BASE_URL", "https://ai.centos.hk/v1")
+API_KEY = os.environ.get("AI_CENTOS_API_KEY", "")
+LLM_MAX_TOKENS = 4096
+
+# --- Model Tiers (cost vs quality balance) ---
+# Tier 1: Cheap & fast — classification, simple extraction, revision execution
+MODEL_LIGHT = os.environ.get("MODEL_LIGHT", "deepseek-v4-flash")
+# Tier 2: Standard — review, evaluation, integration
+MODEL_STANDARD = os.environ.get("MODEL_STANDARD", "deepseek-v4-pro")
+# Tier 3: Premium — core reasoning generation (Thinker)
+MODEL_PREMIUM = os.environ.get("MODEL_PREMIUM", "deepseek-v4-pro")
 
 # --- Embedding ---
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
-EMBEDDING_DIM = 384
+EMBEDDING_API_BASE_URL = os.environ.get("EMBEDDING_API_BASE_URL", "https://api.moark.com/v1")
+EMBEDDING_API_KEY = os.environ.get("EMBEDDING_API_KEY", "")
+EMBEDDING_MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "bge-m3")
+EMBEDDING_DIM = 1024
 
-# --- FAISS ---
-FAISS_TOP_K = 5
+# --- Reranker ---
+RERANKER_API_URL = os.environ.get("RERANKER_API_URL", "https://api.moark.com/v1/rerank")
+RERANKER_API_KEY = os.environ.get("RERANKER_API_KEY", "")
+RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "bge-reranker-v2-m3")
 
-# --- Reasoning generation ---
-TEMPERATURE_GENERATE = 0.2
-TEMPERATURE_SAMPLE = 0.4
-MAX_TOKENS = 8192
+# --- RAG ---
+RAG_TOP_K_BACKGROUND = 5
+RAG_TOP_K_FACT_CHECK = 3
+RAG_TOP_K_GAP_FILL = 3
+RRF_K = 60
+CHUNK_MIN_TOKENS = 200
+CHUNK_MAX_TOKENS = 400
+
+# --- Thinker ---
+REACT_MAX_ROUNDS = 5
 SELF_CONSISTENCY_N = 3
+REACT_TEMPERATURES = [0.3, 0.7, 1.0]
+
+# --- Evaluator ---
+QUALITY_GATE_THRESHOLD = 3.0
+MAX_REVISION_ITERATIONS = 1
+EVAL_WEIGHTS = {
+    "faithfulness": 0.25,
+    "structure": 0.20,
+    "information_density": 0.15,
+    "logical_completeness": 0.25,
+    "traceability": 0.15,
+}
 
 # --- Pipeline ---
-API_CALL_INTERVAL = 1.0  # seconds between API calls
-TEST_LIMIT = 3           # set to None for full run
+API_CALL_INTERVAL = 0.5  # seconds between items
+CONSECUTIVE_FAILURE_LIMIT = 3
 
 # --- Paths ---
-import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
-FAISS_INDEX_DIR = os.path.join(DATA_DIR, "faiss_index")
-
-PATH_CROPDP_KG = os.path.join(BASE_DIR, "CropDP-KG.csv")
-PATH_CROPDP_KG_EN = os.path.join(DATA_DIR, "CropDP-KG-EN.csv")
-PATH_TERM_DICT = os.path.join(DATA_DIR, "term_dict.json")
-PATH_AGTHOUGHTS = os.path.join(BASE_DIR, "AgThoughts.json")
-PATH_AGRI_SUBSET = os.path.join(DATA_DIR, "agri_subset.json")
-PATH_OUTPUT_XML = os.path.join(OUTPUT_DIR, "agri_qa_reasoning.xml")
-
-# --- Domain filtering ---
-BIOTIC_CATEGORIES = [
-    "Biotic Diseases Questions",
-    "Biotic Insects Questions",
-    "Biotic Weeds Questions",
-]
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR / "data"
+OUTPUT_DIR = BASE_DIR / "output"
+PATH_AGTHOUGHTS = BASE_DIR / "AgThoughts.json"
+PATH_SAMPLE = DATA_DIR / "agthoughts" / "sample_1000.json"
+PATH_CHUNKS = DATA_DIR / "chunks" / "passages.jsonl"
+PATH_FAISS_INDEX = DATA_DIR / "index" / "faiss.index"
+PATH_BM25_INDEX = DATA_DIR / "index" / "bm25.pkl"
+PATH_INDEX_METADATA = DATA_DIR / "index" / "metadata.json"
+PATH_OUTPUT = OUTPUT_DIR / "enhanced_dataset.json"
