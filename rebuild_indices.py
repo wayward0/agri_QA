@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild FAISS + BM25 indices from fetched articles using bge-m3 API."""
+"""Rebuild FAISS + BM25 indices + Knowledge Graph from fetched articles."""
 
 import sys
 sys.path.insert(0, ".")
@@ -11,6 +11,10 @@ from rag.embedding_client import EmbeddingClient
 from rag.knowledge_builder import (
     hierarchical_chunk, build_faiss_index, build_bm25_index,
     save_metadata, save_passages_jsonl, save_articles,
+)
+from rag.kg_builder import (
+    extract_kg_from_articles, merge_entities, merge_relations,
+    build_entity_faiss, save_kg,
 )
 
 
@@ -60,11 +64,41 @@ def main():
     print("Saving metadata...")
     save_metadata(passages, str(out / "index" / "metadata.json"))
 
-    print("Done. Knowledge base rebuilt.")
+    # Build Knowledge Graph
+    print("\nBuilding Knowledge Graph...")
+    from llm_client import create_llm_caller
+    kg_llm = create_llm_caller(
+        api_key=config.API_KEY,
+        base_url=config.API_BASE_URL,
+        model=config.MODEL_LIGHT,
+    )
+
+    print(f"Extracting entities and relations from {len(articles)} articles...")
+    raw_entities, raw_relations = extract_kg_from_articles(articles, kg_llm)
+    print(f"Raw extraction: {len(raw_entities)} entities, {len(raw_relations)} relations")
+
+    print("Merging and deduplicating...")
+    entities = merge_entities(raw_entities)
+    relations = merge_relations(raw_relations)
+    print(f"Merged: {len(entities)} entities, {len(relations)} relations")
+
+    print("Saving KG...")
+    save_kg(entities, relations,
+             str(out / "index" / "kg_entities.json"),
+             str(out / "index" / "kg_relations.json"))
+
+    print("Building entity FAISS index...")
+    build_entity_faiss(entities, embedding_model, config.EMBEDDING_DIM,
+                       str(out / "index" / "entity_faiss.index"))
+    print("Entity FAISS index built.")
+
+    print("\nDone. Knowledge base rebuilt.")
     print(f"  Articles: {len(articles)}")
     print(f"  Passages: {len(passages)}")
     print(f"  Content: {total_mb:.1f} MB")
     print(f"  Embedding: {config.EMBEDDING_MODEL_NAME} ({config.EMBEDDING_DIM}d)")
+    print(f"  KG Entities: {len(entities)}")
+    print(f"  KG Relations: {len(relations)}")
 
 
 if __name__ == "__main__":

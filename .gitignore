@@ -3,6 +3,7 @@ __pycache__/
 .DS_Store
 .claude/
 output/
+data/raw/
 data/index/
 data/chunks/
 data/agthoughts/

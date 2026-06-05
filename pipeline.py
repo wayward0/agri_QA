@@ -73,7 +73,22 @@ def load_rag_tool() -> RAGTool:
         rrf_k=config.RRF_K,
         reranker=reranker,
     )
-    return RAGTool(retriever)
+
+    # Load Knowledge Graph (optional)
+    from rag.kg_index import KGIndex
+    kg_index = KGIndex.load(
+        kg_dir=str(config.DATA_DIR / "index"),
+        passage_metadata=metadata,
+        embedding_model=embedding_model,
+        top_k_entities=config.KG_TOP_K_ENTITIES,
+        max_graph_passages=config.KG_MAX_GRAPH_PASSAGES,
+    )
+    if kg_index:
+        print("Knowledge Graph loaded.")
+    else:
+        print("No Knowledge Graph found. Using base retrieval only.")
+
+    return RAGTool(retriever, kg_index=kg_index)
 
 
 def subsample_agthoughts(n: int = 1000, seed: int = 42) -> List[dict]:

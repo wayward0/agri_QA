@@ -8,6 +8,7 @@ Run once to produce index files on disk.
 
 import json
 import pickle
+import random
 import time
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -16,6 +17,11 @@ import faiss
 import numpy as np
 import requests
 from rank_bm25 import BM25Okapi
+
+
+def _jitter(base: float, ratio: float = 0.3) -> float:
+    """Add random jitter to a delay. e.g. _jitter(6.0) → 4.2~7.8"""
+    return base * (1 + random.uniform(-ratio, ratio))
 
 
 SEED_TOPICS = {
@@ -371,8 +377,13 @@ def fetch_titles_by_category(
     all_titles = set()
     visited_cats = set()
 
-    def _fetch_category(cat: str) -> List[str]:
-        """Fetch article titles from one category."""
+    def _fetch_category(cat: str) -> tuple:
+        """Fetch article titles from one category.
+
+        Returns (titles, api_failed): api_failed is True if the request
+        itself failed (network/403/429), False if it succeeded but returned
+        no results (empty category).
+        """
         titles = []
         cmcontinue = None
         while True:
@@ -389,7 +400,8 @@ def fetch_titles_by_category(
 
             data = _api_get(params)
             if "query" not in data:
-                break
+                # Empty response could mean blocked (403) or actual API failure
+                return titles, True
 
             pages = data["query"].get("categorymembers", [])
             for p in pages:
@@ -397,11 +409,11 @@ def fetch_titles_by_category(
 
             if "continue" in data and len(titles) < max_per_category:
                 cmcontinue = data["continue"]["cmcontinue"]
-                time.sleep(4.0)
+                time.sleep(_jitter(6.0))
             else:
                 break
 
-        return titles
+        return titles, False
 
     def _fetch_subcategories(cat: str) -> List[str]:
         """Fetch subcategory names from one category."""
@@ -417,33 +429,33 @@ def fetch_titles_by_category(
             return []
         return [p["title"] for p in data["query"].get("categorymembers", [])]
 
-    consecutive_failures = 0
+    api_failures = 0
     for cat in categories:
         if cat in visited_cats:
             continue
         visited_cats.add(cat)
 
         # If Wikipedia is blocking us, wait before retrying
-        if consecutive_failures >= 3:
-            cooldown = 600  # 10 minutes
-            print(f"  {consecutive_failures} consecutive failures. Cooling down {cooldown}s...")
+        if api_failures >= 3:
+            cooldown = _jitter(600)
+            print(f"  {api_failures} consecutive API failures. Cooling down {cooldown:.0f}s...")
             time.sleep(cooldown)
-            consecutive_failures = 0
+            api_failures = 0
 
         # Fetch articles from this category
-        titles = _fetch_category(cat)
-        if not titles:
-            consecutive_failures += 1
+        titles, failed = _fetch_category(cat)
+        if failed:
+            api_failures += 1
         else:
-            consecutive_failures = 0
+            api_failures = 0
         all_titles.update(titles)
         print(f"  {cat}: {len(titles)} articles")
-        time.sleep(4.0)
+        time.sleep(_jitter(6.0))
 
         # Fetch subcategories
         if include_subcategories:
             subcats = _fetch_subcategories(cat)
-            time.sleep(4.0)
+            time.sleep(_jitter(6.0))
             for subcat in subcats:
                 if subcat in visited_cats:
                     continue
@@ -451,10 +463,14 @@ def fetch_titles_by_category(
                 if not _is_agricultural_category(subcat):
                     continue
                 visited_cats.add(subcat)
-                sub_titles = _fetch_category(subcat)
+                sub_titles, sub_failed = _fetch_category(subcat)
+                if sub_failed:
+                    api_failures += 1
+                else:
+                    api_failures = 0
                 all_titles.update(sub_titles)
                 print(f"    {subcat}: {len(sub_titles)} articles")
-                time.sleep(4.0)
+                time.sleep(_jitter(6.0))
 
     result = sorted(all_titles)
     print(f"  Total unique titles: {len(result)}")
@@ -472,8 +488,8 @@ def _api_get(params: dict, retries: int = 3) -> dict:
                 timeout=30,
             )
             if r.status_code == 429:
-                wait = 120 * (attempt + 1)
-                print(f"  429 rate limited. Waiting {wait}s (attempt {attempt+1}/{retries})...")
+                wait = _jitter(180 * (attempt + 1))
+                print(f"  429 rate limited. Waiting {wait:.0f}s (attempt {attempt+1}/{retries})...")
                 time.sleep(wait)
                 continue
             r.raise_for_status()
@@ -482,12 +498,12 @@ def _api_get(params: dict, retries: int = 3) -> dict:
             err_str = str(e).lower()
             is_rate_limit = "429" in err_str or "connection reset" in err_str or "connection aborted" in err_str
             if is_rate_limit:
-                wait = 120 * (attempt + 1)
-                print(f"  Rate limited (connection reset/429). Waiting {wait}s (attempt {attempt+1}/{retries})...")
+                wait = _jitter(180 * (attempt + 1))
+                print(f"  Rate limited (connection reset/429). Waiting {wait:.0f}s (attempt {attempt+1}/{retries})...")
                 time.sleep(wait)
             elif attempt < retries - 1:
-                wait = 30 * (attempt + 1)
-                print(f"  Request error: {e}. Retrying in {wait}s (attempt {attempt+1}/{retries})...")
+                wait = _jitter(45 * (attempt + 1))
+                print(f"  Request error: {e}. Retrying in {wait:.0f}s (attempt {attempt+1}/{retries})...")
                 time.sleep(wait)
             else:
                 print(f"  API error after {retries} attempts: {e}")
@@ -518,22 +534,22 @@ def _fetch_page_content(title: str) -> Optional[Dict]:
             elif r.status_code == 404:
                 return None
             elif r.status_code == 429:
-                wait = 120 * (attempt + 1)
-                print(f"  REST 429 for {title}. Waiting {wait}s...")
+                wait = _jitter(180 * (attempt + 1))
+                print(f"  REST 429 for {title}. Waiting {wait:.0f}s...")
                 time.sleep(wait)
                 continue
             else:
-                time.sleep(1)
+                time.sleep(_jitter(5.0))
         except Exception as e:
             err_str = str(e).lower()
             is_rate_limit = "429" in err_str or "connection reset" in err_str or "connection aborted" in err_str
             if is_rate_limit:
-                wait = 120 * (attempt + 1)
-                print(f"  Rate limited for {title}. Waiting {wait}s...")
+                wait = _jitter(180 * (attempt + 1))
+                print(f"  Rate limited for {title}. Waiting {wait:.0f}s...")
                 time.sleep(wait)
             elif attempt < 2:
-                wait = 30 * (attempt + 1)
-                print(f"  Request error for {title}: {e}. Retrying in {wait}s...")
+                wait = _jitter(45 * (attempt + 1))
+                print(f"  Request error for {title}: {e}. Retrying in {wait:.0f}s...")
                 time.sleep(wait)
             else:
                 try:
@@ -781,27 +797,24 @@ def fetch_wikipedia_articles(
             print(f"  + {title} ({len(article['content'])} chars) [{len(articles)} total]")
         else:
             print(f"  x {title}")
-        time.sleep(3.0)  # Safe interval for REST API
+        time.sleep(_jitter(5.0))
         return article
 
     # Fetch seed topics
     seed_count_before = len(articles)
-    consecutive_fails = 0
+    api_failures = 0
     for i, topic in enumerate(topics):
         if len(articles) >= max_articles:
             break
         prev_count = len(articles)
-        _fetch(topic)
-        if len(articles) == prev_count:
-            consecutive_fails += 1
-        else:
-            consecutive_fails = 0
-        # If Wikipedia is blocking us, cool down
-        if consecutive_fails >= 10:
-            cooldown = 600
-            print(f"  {consecutive_fails} consecutive fetch failures. Cooling down {cooldown}s...")
-            time.sleep(cooldown)
-            consecutive_fails = 0
+        article = _fetch(topic)
+        # Only count actual API/network failures, not 404s (article not found)
+        if article is None and topic in visited:
+            # _fetch_page_content returned None — could be 404 or network error
+            # We don't count this as an API failure since 404 is normal
+            pass
+        # If Wikipedia is blocking us (connection errors pile up), cool down
+        # This is detected by the _api_get retry logic, not by missing articles
         # Incremental save every 50 articles
         if len(articles) % 50 == 0 and len(articles) > seed_count_before:
             _save_incremental()

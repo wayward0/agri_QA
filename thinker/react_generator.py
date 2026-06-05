@@ -51,18 +51,11 @@ STEP_TYPES = (
 def _build_react_prompt(
     question: str,
     answer: str,
-    initial_evidence: List[Evidence],
     thoughts: List[str],
     observations: List[List[Evidence]],
 ) -> str:
     """Build the prompt for the current ReAct round."""
     parts = [f"Question: {question}\nAnswer: {answer}\n"]
-
-    if initial_evidence:
-        parts.append("Initial Evidence:")
-        for e in initial_evidence:
-            parts.append(f"  - [{e.source}] {e.content[:300]}")
-        parts.append("")
 
     for i, thought in enumerate(thoughts):
         parts.append(f"Thought {i+1}: {thought}")
@@ -193,15 +186,12 @@ def generate_react_chain(
     Returns:
         A ReasoningChain.
     """
-    # Step 1: Background retrieval
-    initial_evidence = rag_tool.retrieve(question, intent="background", top_k=5)
-
-    # Step 2-N: ReAct loop
+    # ReAct loop — RAG is on-demand, called only when the LLM issues a retrieve action
     thoughts = []
     observations = []
 
     for round_num in range(max_rounds):
-        prompt = _build_react_prompt(question, answer, initial_evidence, thoughts, observations)
+        prompt = _build_react_prompt(question, answer, thoughts, observations)
         response = llm_call(
             prompt,
             system=REACT_SYSTEM_PROMPT,

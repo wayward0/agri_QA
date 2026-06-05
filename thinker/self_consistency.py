@@ -9,6 +9,7 @@ from typing import List
 from models import ReasoningChain
 
 from .react_generator import generate_react_chain
+from .socratic_challenger import socratic_challenge, revise_with_socratic
 
 
 def _score_candidate(chain: ReasoningChain) -> float:
@@ -67,7 +68,7 @@ def generate_with_consistency(
     n_samples: int = 1,
     temperatures: List[float] = None,
 ) -> ReasoningChain:
-    """Generate reasoning chain with optional self-consistency.
+    """Generate reasoning chain with optional self-consistency and Socratic challenge.
 
     Args:
         question: The agricultural question.
@@ -78,7 +79,7 @@ def generate_with_consistency(
         temperatures: Temperature for each sample.
 
     Returns:
-        The best ReasoningChain from n_samples candidates.
+        The best ReasoningChain, Socratic-challenged and revised.
     """
     if temperatures is None:
         temperatures = [0.3, 0.7, 1.0]
@@ -89,16 +90,21 @@ def generate_with_consistency(
             question, answer, rag_tool, llm_call,
             temperature=temperatures[0],
         )
-        return chain
+    else:
+        # Multiple paths — self-consistency selection
+        candidates = []
+        for i in range(n_samples):
+            temp = temperatures[i] if i < len(temperatures) else temperatures[-1]
+            chain = generate_react_chain(
+                question, answer, rag_tool, llm_call,
+                temperature=temp,
+            )
+            candidates.append(chain)
+        chain = _select_best(candidates)
 
-    # Multiple paths — self-consistency selection
-    candidates = []
-    for i in range(n_samples):
-        temp = temperatures[i] if i < len(temperatures) else temperatures[-1]
-        chain = generate_react_chain(
-            question, answer, rag_tool, llm_call,
-            temperature=temp,
-        )
-        candidates.append(chain)
+    # Socratic self-challenge on the selected chain
+    challenges = socratic_challenge(chain, question, answer, llm_call)
+    if challenges:
+        chain = revise_with_socratic(chain, challenges, question, answer, llm_call, rag_tool)
 
-    return _select_best(candidates)
+    return chain

@@ -70,3 +70,10 @@ PATH_FAISS_INDEX = DATA_DIR / "index" / "faiss.index"
 PATH_BM25_INDEX = DATA_DIR / "index" / "bm25.pkl"
 PATH_INDEX_METADATA = DATA_DIR / "index" / "metadata.json"
 PATH_OUTPUT = OUTPUT_DIR / "enhanced_dataset.json"
+
+# --- Knowledge Graph ---
+KG_TOP_K_ENTITIES = 5
+KG_MAX_GRAPH_PASSAGES = 10
+PATH_KG_ENTITIES = DATA_DIR / "index" / "kg_entities.json"
+PATH_KG_RELATIONS = DATA_DIR / "index" / "kg_relations.json"
+PATH_KG_ENTITY_FAISS = DATA_DIR / "index" / "entity_faiss.index"

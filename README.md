@@ -19,11 +19,14 @@
 │    -flash         -pro            -pro          -flash        -pro
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                    RAG Knowledge Base                        │   │
+│  │              RAG Knowledge Base (Graph-Enhanced)              │   │
 │  │  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌──────────────┐  │   │
 │  │  │  FAISS  │  │  BM25   │  │ RRF Fusion│  │  Reranker    │  │   │
 │  │  │ (dense) │  │(sparse) │  │  (hybrid) │  │(bge-reranker)│  │   │
 │  │  └─────────┘  └─────────┘  └──────────┘  └──────────────┘  │   │
+│  │  ┌──────────────────────────────────────────────────────┐   │   │
+│  │  │  Knowledge Graph (entities + relations + 1-hop traversal) │   │
+│  │  └──────────────────────────────────────────────────────┘   │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -41,8 +44,10 @@ Stage 0: 难度分类 (Classifier)
   ▼
 Stage 1: 推理生成 (Thinker)
   │  ReAct 框架: Thought → Action(RAG) → Observation 循环
+  │  RAG 作为按需工具: LLM 自主决定何时 retrieve，无初始强制检索
   │  HARD 题: 自洽性采样 (3 条路径, 温度 [0.3, 0.7, 1.0], 择优)
   │  其他: 单路径
+  │  苏格拉底自质疑: 生成挑战性问题 → 修正推理链 (含按需 RAG 补证)
   │  输出: ReasoningChain (draft_chain)
   │
   ▼
@@ -93,7 +98,8 @@ agri_QA/
 │   └── difficulty_classifier.py
 ├── thinker/                    # Stage 1: 推理生成
 │   ├── react_generator.py      #   ReAct 推理循环
-│   └── self_consistency.py     #   自洽性多路径采样
+│   ├── self_consistency.py     #   自洽性多路径采样
+│   └── socratic_challenger.py  #   苏格拉底自质疑 + 修正
 ├── reviewer/                   # Stage 2: 多阶段审查
 │   ├── logic_reviewer.py       #   Phase A: 逻辑审查
 │   ├── external_reviewer.py    #   Phase B: 事实核查
@@ -106,11 +112,13 @@ agri_QA/
 │   └── ppl_scorer.py           #   困惑度评分 (可选, GPT-2)
 │
 ├── rag/                        # RAG 检索增强
-│   ├── rag_tool.py             #   统一检索接口
+│   ├── rag_tool.py             #   统一检索接口 (含 Graph 扩展)
 │   ├── retriever.py            #   混合检索: FAISS + BM25 + RRF
 │   ├── embedding_client.py     #   Embedding API 客户端 (bge-m3)
 │   ├── reranker.py             #   Reranker API 客户端 (bge-reranker-v2-m3)
-│   ├── knowledge_builder.py    #   知识库构建器
+│   ├── knowledge_builder.py    #   知识库构建器 + Wikipedia 抓取
+│   ├── kg_builder.py           #   知识图谱构建 (LLM 实体/关系抽取)
+│   ├── kg_index.py             #   知识图谱索引 (实体匹配 + 图扩展)
 │   └── query_processor.py      #   查询改写 + 实体抽取
 │
 ├── data/
@@ -119,7 +127,11 @@ agri_QA/
 │   └── index/
 │       ├── faiss.index               # FAISS 密集索引 (1024 维)
 │       ├── bm25.pkl                  # BM25 稀疏索引
-│       └── metadata.json             # 段落元数据
+│       ├── metadata.json             # 段落元数据
+│       ├── kg_entities.json          # 知识图谱实体 (8 类)
+│       ├── kg_relations.json         # 知识图谱关系 (8 类)
+│       ├── entity_faiss.index        # 实体名向量索引
+│       └── entity_faiss_map.json     # 实体索引映射
 │
 └── output/
     └── enhanced_dataset.json         # Pipeline 输出 (含 checkpoint)
@@ -205,27 +217,57 @@ result = classify_difficulty(question, answer, llm_call)
 
 | 难度 | Thinker | Reviewer | Reviser | 质量门控 |
 |------|---------|----------|---------|---------|
-| EASY | 单路径 | Phase A 仅逻辑审查 | 跳过 | 无 |
-| MEDIUM | 单路径 | Phase A + B (含事实核查) | 执行 | 无 |
-| HARD | 3 路径自洽性 | Phase A + B + C | 执行 | score < 3.0 重来 |
+| EASY | 单路径 + 苏格拉底质疑 | Phase A 仅逻辑审查 | 跳过 | 无 |
+| MEDIUM | 单路径 + 苏格拉底质疑 | Phase A + B (含事实核查) | 执行 | 无 |
+| HARD | 3 路径自洽性 + 苏格拉底质疑 | Phase A + B + C | 执行 | score < 3.0 重来 |
 
 ### 推理生成器 (thinker/)
 
 **ReAct 框架** (`react_generator.py`): Thought → Action → Observation 循环
 
 ```
-Thought: 分析问题, 确定需要什么信息
-Action:  retrieve: <搜索查询>  或  FINISH
-Observation: RAG 返回的证据
-... (最多 5 轮)
-FINISH → 输出结构化 JSON 推理链
+Question + Answer 进入 ReAct 循环 (无初始 RAG 检索)
+
+Round 1:
+  Thought: "需要了解作物的土壤需求"
+  Action:  retrieve: "corn soil requirements sandy loam"
+  Observation: [RAG 返回的证据]
+
+Round 2:
+  Thought: "已有足够信息构建推理链"
+  Action:  FINISH
+  → 输出结构化 JSON 推理链
 ```
+
+**RAG-as-Tool 设计**: RAG 是纯按需工具，不由 pipeline 预设调用时机。LLM 在 Thought 阶段自主判断是否需要检索，通过 `retrieve: <query>` Action 发起调用。
 
 **自洽性采样** (`self_consistency.py`): 对 HARD 题生成 3 条路径 (温度 0.3/0.7/1.0)，按以下标准择优:
 - 步骤数 (3-7 步最优, 权重 0.30)
 - 证据利用率 (0.35)
 - 类型多样性 (0.20)
 - 高置信度比例 (0.15)
+
+**苏格拉底自质疑** (`socratic_challenger.py`): 在自洽性选择后执行，对选出的最优链进行自我挑战:
+
+```
+选出的最优推理链
+  │
+  ▼
+Socratic Challenge: 生成 3-5 个质疑问题
+  - 无证据支撑的事实断言 (unsupported_claim)
+  - 步骤间的逻辑跳跃 (logical_gap)
+  - 未考虑的替代解释 (alternative_ignored)
+  - 遗漏的边界条件 (missing_edge_case)
+  - 过度泛化的结论 (overgeneralization)
+  │
+  ▼
+Revision: 基于质疑修正推理链
+  - 可按需调用 RAG 补充证据 (retrieve: <query>)
+  - 保留未被质疑的步骤
+  │
+  ▼
+输出: 修正后的 ReasoningChain (draft_chain)
+```
 
 ### 审查器 (reviewer/)
 
@@ -280,6 +322,15 @@ overall = faithfulness/5 × 0.25
 
 ## RAG 检索系统
 
+### 设计原则: RAG-as-Tool
+
+RAG 是所有 Agent 共享的按需工具，而非 pipeline 中的固定阶段。每个 Agent 在需要证据时自主调用 RAG，由 LLM 决定调用时机:
+
+- **Thinker**: 在 ReAct 循环中通过 `retrieve: <query>` 按需检索
+- **Socratic Challenger**: 在修正推理链时按需补充证据
+- **Reviewer Phase B**: 逐步事实核查时按需检索
+- **Evaluator**: 验证断言时按需检索
+
 ### 混合检索架构
 
 ```
@@ -300,6 +351,41 @@ RRF_score(d) = Σ 1/(k + rank_i(d))  对每个检索器的排名
 ```
 
 **重排序**: bge-reranker-v2-m3 交叉编码器，对 RRF 融合后的候选集进行精排 (最多 25 条)
+
+### Graph RAG: 知识图谱增强检索
+
+在基础混合检索之上，增加知识图谱层实现关系感知的查询扩展。对所有现有调用点完全透明，无需修改 thinker/reviewer/reviser 代码。
+
+**实体类型 (8 类):** crop, disease, pest, chemical, practice, nutrient, soil, climate
+
+**关系类型 (8 类):** affects, causes, treats, prevents, requires, interacts_with, found_in, applied_to
+
+**离线构建** (`kg_builder.py`): LLM 从 Wikipedia 文章中批量抽取实体和关系，按 article 分批保持上下文。去重后保存为 JSON，实体名+别名构建 FAISS 索引用于查询时向量匹配。
+
+**查询时图扩展** (`kg_index.py`):
+
+```
+Query → 实体匹配 (entity_faiss 向量搜索)
+      → 1-hop 图遍历 (收集关联实体的 passage_ids)
+      → 加权排序 (match_score × confidence × 0.5 距离衰减)
+      → 合并基础检索结果 (graph 结果 +20% 分数提升)
+      → Top-K
+```
+
+**集成方式**: `RAGTool.retrieve()` 内部自动执行图扩展，对外接口不变:
+
+```python
+rag_tool.retrieve("fusarium wilt treatment", intent="background", top_k=5)
+# 内部: 基础混合检索 + KG 图扩展 → 合并去重 → 返回
+```
+
+**构建 KG:**
+
+```bash
+# rebuild_indices.py 已集成 KG 构建步骤
+python rebuild_indices.py
+# 输出: data/index/kg_entities.json, kg_relations.json, entity_faiss.index
+```
 
 ### Embedding 客户端
 
@@ -382,6 +468,13 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 | `RRF_K` | 60 | RRF 融合常数 |
 | `CHUNK_MIN_TOKENS` | 200 | 最小分块长度 |
 | `CHUNK_MAX_TOKENS` | 400 | 最大分块长度 |
+
+### 知识图谱参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `KG_TOP_K_ENTITIES` | 5 | 查询时实体匹配数量 |
+| `KG_MAX_GRAPH_PASSAGES` | 10 | 图扩展最大返回 passage 数 |
 
 ### Thinker 参数
 
@@ -478,7 +571,7 @@ python fetch_from_dumps.py
 python rebuild_indices.py
 ```
 
-对已有文章重新分块、编码、构建 FAISS + BM25 索引。切换 embedding 模型后需重建。
+对已有文章重新分块、编码、构建 FAISS + BM25 索引 + 知识图谱。切换 embedding 模型后需重建。
 
 ## 故障排除
 
