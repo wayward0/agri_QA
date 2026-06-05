@@ -46,6 +46,7 @@ REACT_TEMPERATURES = [0.3, 0.7, 1.0]
 
 # --- Evaluator ---
 QUALITY_GATE_THRESHOLD = 3.0
+FAITHFULNESS_GATE_THRESHOLD = 3.0  # MEDIUM: force retry if faithfulness drops below this
 MAX_REVISION_ITERATIONS = 1
 EVAL_WEIGHTS = {
     "faithfulness": 0.25,

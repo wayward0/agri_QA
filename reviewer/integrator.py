@@ -30,6 +30,7 @@ Logic Critique:
 
 External Critique:
 {external_critique}
+{evaluator_feedback}
 
 AVAILABLE ACTIONS (atomic operations):
 - add_evidence:    {{"action": "add_evidence", "target_step": N, "params": {{"evidence": "..."}}}}
@@ -44,12 +45,46 @@ RULES:
 2. If a step needs both evidence and content revision → TWO separate actions
 3. Priority: P0 (must fix: factual errors, contradictions), P1 (should fix: missing steps, weak evidence), P2 (optional: style, clarity)
 4. Do NOT generate vague actions — use specific action types
+5. When evaluator feedback is provided, PRIORITIZE fixing the specific steps flagged by the evaluator
 
 Output (JSON only):
 {{"priority_actions": [
     {{"priority": "P0", "action": "add_evidence", "target_step": 3,
       "params": {{"evidence": "..."}}, "reason": "Factual: unsupported claim"}}
 ], "optional_improvements": [...], "conflicts_resolved": [...]}}"""
+
+
+def _format_evaluator_feedback(
+    faith_notes: List[dict],
+    logic_notes: List[dict],
+    scores: Optional[dict],
+) -> str:
+    """Format evaluator feedback for the integration prompt."""
+    if not faith_notes and not logic_notes and not scores:
+        return ""
+
+    parts = ["\nEvaluator Feedback (from quality gate — focus on these issues):"]
+
+    if scores:
+        parts.append(f"  Scores: faithfulness={scores.get('faithfulness', '?')}/5, "
+                      f"logical_completeness={scores.get('logical_completeness', '?')}/5, "
+                      f"overall={scores.get('overall', '?')}")
+
+    if faith_notes:
+        parts.append("  Faithfulness issues:")
+        for note in faith_notes:
+            step = note.get("step", "?")
+            issue = note.get("issue", note.get("assessment", ""))
+            parts.append(f"    Step {step}: {issue}")
+
+    if logic_notes:
+        parts.append("  Logical completeness issues:")
+        for note in logic_notes:
+            step = note.get("step", "?")
+            issue = note.get("issue", note.get("assessment", ""))
+            parts.append(f"    Step {step}: {issue}")
+
+    return "\n".join(parts)
 
 
 # Default actions when no critique is provided
@@ -124,6 +159,9 @@ def integrate_critiques(
     logic_critique: ReviewCritique,
     external_critique: Optional[ReviewCritique],
     llm_call,
+    evaluator_faith_notes: List[dict] = None,
+    evaluator_logic_notes: List[dict] = None,
+    evaluator_scores: Optional[dict] = None,
 ) -> UnifiedActions:
     """Merge logic and external critiques into structured actions.
 
@@ -131,13 +169,22 @@ def integrate_critiques(
         logic_critique: Phase A output.
         external_critique: Phase B output (None if not run).
         llm_call: Callable matching LLMCallFn protocol.
+        evaluator_faith_notes: Step-level faithfulness issues from Evaluator.
+        evaluator_logic_notes: Step-level logical completeness issues from Evaluator.
+        evaluator_scores: Score summary dict for context.
 
     Returns:
         UnifiedActions with priority-sorted atomic operations.
     """
+    feedback = _format_evaluator_feedback(
+        evaluator_faith_notes or [],
+        evaluator_logic_notes or [],
+        evaluator_scores,
+    )
     prompt = INTEGRATION_PROMPT.format(
         logic_critique=_critique_to_text(logic_critique),
         external_critique=_critique_to_text(external_critique),
+        evaluator_feedback=feedback,
     )
     raw = llm_call(prompt, system=SYSTEM_PROMPT, temperature=0.1, max_tokens=2048)
     return _parse_unified_actions(raw)
@@ -150,6 +197,9 @@ def run_review(
     rag_tool,
     llm_call,
     answer: str = "",
+    evaluator_faith_notes: List[dict] = None,
+    evaluator_logic_notes: List[dict] = None,
+    evaluator_scores: Optional[dict] = None,
 ) -> Tuple[UnifiedActions, List[ReviewCritique]]:
     """Run the appropriate review phases based on difficulty.
 
@@ -160,6 +210,9 @@ def run_review(
         rag_tool: RAGTool instance.
         llm_call: Callable matching LLMCallFn protocol.
         answer: Original answer text for semantic drift detection.
+        evaluator_faith_notes: Step-level faithfulness issues from Evaluator (feedback loop).
+        evaluator_logic_notes: Step-level logical completeness issues from Evaluator (feedback loop).
+        evaluator_scores: Score summary dict for context.
 
     Returns:
         Tuple of (unified_actions, critique_history).
@@ -176,7 +229,12 @@ def run_review(
         external_critique = review_external(chain, question, rag_tool, llm_call)
         critiques.append(external_critique)
 
-    # Phase C: integration (always run if we have any critique)
-    unified = integrate_critiques(logic_critique, external_critique, llm_call)
+    # Phase C: integration — include evaluator feedback when available
+    unified = integrate_critiques(
+        logic_critique, external_critique, llm_call,
+        evaluator_faith_notes=evaluator_faith_notes,
+        evaluator_logic_notes=evaluator_logic_notes,
+        evaluator_scores=evaluator_scores,
+    )
 
     return unified, critiques

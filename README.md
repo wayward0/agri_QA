@@ -74,8 +74,9 @@ Stage 4: 质量评估 (Evaluator)
   │  输出: QualityScores
   │
   ▼
-质量门控 (仅 HARD):
-  │  若 overall < 3.0 → 再次 Review + Revise + Evaluate
+质量门控:
+  │  HARD: overall < 3.0 → Review + Revise + Evaluate (带扣分诊断反馈)
+  │  MEDIUM: faithfulness < 3.0 → 强制修订 (单维强门控)
   │
   ▼
 输出: PipelineItem (包含全部中间结果)
@@ -217,9 +218,9 @@ result = classify_difficulty(question, answer, llm_call)
 
 | 难度 | Thinker | Reviewer | Reviser | 质量门控 |
 |------|---------|----------|---------|---------|
-| EASY | 单路径 + 苏格拉底质疑 | Phase A 仅逻辑审查 | 跳过 | 无 |
-| MEDIUM | 单路径 + 苏格拉底质疑 | Phase A + B (含事实核查) | 执行 | 无 |
-| HARD | 3 路径自洽性 + 苏格拉底质疑 | Phase A + B + C | 执行 | score < 3.0 重来 |
+| EASY | 单路径 + 苏格拉底质疑 | Phase A 逻辑+对齐审查 | 跳过 | 无 |
+| MEDIUM | 单路径 + 苏格拉底质疑 | Phase A + B (含事实核查) | 执行 | faithfulness < 3.0 强制重来 |
+| HARD | 3 路径自洽性 + 苏格拉底质疑 | Phase A + B + C | 执行 | overall < 3.0 重来 (带反馈) |
 
 ### 推理生成器 (thinker/)
 
@@ -338,7 +339,29 @@ overall = faithfulness/5 × 0.25
         + traceability × 0.15
 ```
 
-## RAG 检索系统
+### 质量门控与反馈流
+
+```
+评估结果 (scores + step-level notes)
+  │
+  ├─ HARD: overall < 3.0 ─────────┐
+  └─ MEDIUM: faithfulness < 3.0 ──┤
+                                   ▼
+                    构建扣分诊断报告
+                    (哪些步骤 faithfulness 低? 哪些逻辑不完整?)
+                                   │
+                                   ▼
+                    反哺给 Reviewer Phase C (Integrator)
+                    Integrator 优先修复 Evaluator 标记的具体步骤
+                                   │
+                                   ▼
+                    Reviser 执行针对性修订
+                                   │
+                                   ▼
+                    Evaluator 重新评估
+```
+
+关键: Reviewer 第二次审查时不再是"盲目修订"，而是拿到 Evaluator 的逐步扣分诊断，对症下药。
 
 ### 设计原则: RAG-as-Tool
 
@@ -506,7 +529,8 @@ classifier = create_stage_caller(base, "deepseek-v4-flash")
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `QUALITY_GATE_THRESHOLD` | 3.0 | HARD 题质量门控阈值 |
+| `QUALITY_GATE_THRESHOLD` | 3.0 | HARD 题 overall 门控阈值 |
+| `FAITHFULNESS_GATE_THRESHOLD` | 3.0 | MEDIUM 题 faithfulness 强门控阈值 |
 | `MAX_REVISION_ITERATIONS` | 1 | 最大修订迭代次数 |
 | `EVAL_WEIGHTS` | faith:0.25, struct:0.20, density:0.15, logic:0.25, trace:0.15 | 五维权重 |
 

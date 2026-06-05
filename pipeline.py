@@ -194,8 +194,8 @@ def process_item(
         revised_chain = draft_chain
 
     # Stage 4: Evaluator (standard model) — all difficulty levels
-    faith, _ = judge_faithfulness(revised_chain, evaluator_call)
-    logic, _ = judge_logical_completeness(revised_chain, evaluator_call)
+    faith, faith_notes = judge_faithfulness(revised_chain, evaluator_call)
+    logic, logic_notes = judge_logical_completeness(revised_chain, evaluator_call)
     auto = compute_auto_metrics(revised_chain)
     w = config.EVAL_WEIGHTS
     overall = (
@@ -212,16 +212,27 @@ def process_item(
         **auto,
     )
 
-    # Quality gate: Hard path with low score → one more review+revise
+    # Quality gate: determine if retry is needed
+    gate_triggered = False
     if difficulty == DifficultyLevel.HARD and scores.overall < config.QUALITY_GATE_THRESHOLD:
+        gate_triggered = True
+    elif difficulty == DifficultyLevel.MEDIUM and faith < config.FAITHFULNESS_GATE_THRESHOLD:
+        gate_triggered = True
+
+    if gate_triggered:
+        # Pass evaluator diagnostics to Reviewer for targeted revision
+        eval_scores = {"faithfulness": faith, "logical_completeness": logic, "overall": scores.overall}
         actions2, critiques2 = run_review(
-            revised_chain, question, difficulty, rag_tool, reviewer_call, answer=answer
+            revised_chain, question, difficulty, rag_tool, reviewer_call, answer=answer,
+            evaluator_faith_notes=faith_notes,
+            evaluator_logic_notes=logic_notes,
+            evaluator_scores=eval_scores,
         )
         revised_chain = execute_revision(revised_chain, actions2, reviser_call, rag_tool)
         critiques.extend(critiques2)
 
-        faith, _ = judge_faithfulness(revised_chain, evaluator_call)
-        logic, _ = judge_logical_completeness(revised_chain, evaluator_call)
+        faith, faith_notes = judge_faithfulness(revised_chain, evaluator_call)
+        logic, logic_notes = judge_logical_completeness(revised_chain, evaluator_call)
         auto = compute_auto_metrics(revised_chain)
         w = config.EVAL_WEIGHTS
         overall = (
