@@ -134,65 +134,144 @@ def _build_passages_text(passages: List[Dict], max_chars: int = 6000) -> str:
     return "\n\n".join(parts)
 
 
+def _extract_single_article(article: Dict, llm_call) -> Tuple[List[Dict], List[Dict]]:
+    """Extract entities and relations from a single article.
+
+    Returns (entities, relations) with passage_ids and source_article tagged.
+    """
+    from .knowledge_builder import hierarchical_chunk
+
+    passages = hierarchical_chunk([article])
+    if not passages:
+        return [], []
+
+    passages_text = _build_passages_text(passages)
+    if len(passages_text) < 100:
+        return [], []
+
+    prompt = EXTRACT_PROMPT.format(
+        entity_types=", ".join(ENTITY_TYPES),
+        relation_types=", ".join(RELATION_TYPES),
+        passages_text=passages_text,
+    )
+
+    raw = llm_call(prompt, system=EXTRACT_SYSTEM_PROMPT, temperature=0.1, max_tokens=2048)
+    entities, relations = _parse_extraction(raw)
+
+    passage_ids = [p["id"] for p in passages]
+    for ent in entities:
+        ent["passage_ids"] = passage_ids
+        ent["source_article"] = article["title"]
+    for rel in relations:
+        rel["evidence_passage_ids"] = passage_ids
+
+    return entities, relations
+
+
 def extract_kg_from_articles(
     articles: List[Dict],
     llm_call,
     batch_size: int = 1,
+    max_workers: int = 5,
+    checkpoint_path: Optional[str] = None,
 ) -> Tuple[List[Dict], List[Dict]]:
-    """Extract entities and relations from articles using LLM.
-
-    Processes one article at a time for context coherence.
+    """Extract entities and relations from articles using LLM (parallel).
 
     Args:
         articles: List of article dicts (from fetch_wikipedia_articles).
         llm_call: LLM call function.
-        batch_size: Articles per LLM call (currently 1 for quality).
+        batch_size: Unused, kept for API compatibility.
+        max_workers: Number of parallel LLM calls.
+        checkpoint_path: If provided, save incremental results every 50 articles.
 
     Returns:
         (entities, relations) — raw, may contain duplicates.
     """
-    from .knowledge_builder import hierarchical_chunk
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from tqdm import tqdm
+    import threading
 
     all_entities = []
     all_relations = []
+    lock = threading.Lock()
+    done_count = 0
 
-    for i, article in enumerate(articles):
-        # Chunk the article
-        passages = hierarchical_chunk([article])
-        if not passages:
-            continue
+    # Load checkpoint if exists
+    start_idx = 0
+    if checkpoint_path and Path(checkpoint_path).exists():
+        try:
+            with open(checkpoint_path, "r") as f:
+                ckpt = json.load(f)
+            all_entities = ckpt.get("entities", [])
+            all_relations = ckpt.get("relations", [])
+            start_idx = ckpt.get("done_count", 0)
+            print(f"  Resuming KG extraction from article {start_idx} "
+                  f"({len(all_entities)} entities, {len(all_relations)} relations loaded)")
+        except (json.JSONDecodeError, KeyError):
+            pass
 
-        # Build prompt
-        passages_text = _build_passages_text(passages)
-        if len(passages_text) < 100:
-            continue
+    remaining = articles[start_idx:]
+    if not remaining:
+        return all_entities, all_relations
 
-        prompt = EXTRACT_PROMPT.format(
-            entity_types=", ".join(ENTITY_TYPES),
-            relation_types=", ".join(RELATION_TYPES),
-            passages_text=passages_text,
-        )
+    pbar = tqdm(total=len(remaining), desc="KG extraction", unit="article",
+                initial=0)
 
-        raw = llm_call(prompt, system=EXTRACT_SYSTEM_PROMPT, temperature=0.1, max_tokens=2048)
-        entities, relations = _parse_extraction(raw)
+    def _process_and_collect(idx: int, article: Dict):
+        nonlocal done_count
+        ents, rels = _extract_single_article(article, llm_call)
+        with lock:
+            all_entities.extend(ents)
+            all_relations.extend(rels)
+            done_count += 1
+            pbar.update(1)
+            # Incremental checkpoint
+            if checkpoint_path and done_count % 50 == 0:
+                _save_checkpoint(checkpoint_path, all_entities, all_relations,
+                                 start_idx + done_count)
 
-        # Tag each entity with passage_ids
-        passage_ids = [p["id"] for p in passages]
-        for ent in entities:
-            ent["passage_ids"] = passage_ids
-            ent["source_article"] = article["title"]
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {}
+        for i, article in enumerate(remaining):
+            future = executor.submit(_process_and_collect, i, article)
+            futures[future] = i
 
-        for rel in relations:
-            rel["evidence_passage_ids"] = passage_ids
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                idx = futures[future]
+                print(f"  Warning: article {start_idx + idx} failed: {e}")
 
-        all_entities.extend(entities)
-        all_relations.extend(relations)
+    pbar.close()
 
-        if (i + 1) % 10 == 0:
-            print(f"  Extracted from {i+1}/{len(articles)} articles: "
-                  f"{len(all_entities)} entities, {len(all_relations)} relations")
+    # Final checkpoint
+    if checkpoint_path:
+        _save_checkpoint(checkpoint_path, all_entities, all_relations,
+                         start_idx + len(remaining))
 
     return all_entities, all_relations
+
+
+def _save_checkpoint(path: str, entities: List[Dict], relations: List[Dict],
+                     done_count: int):
+    """Save KG extraction checkpoint."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({
+            "entities": entities,
+            "relations": relations,
+            "done_count": done_count,
+        }, f, ensure_ascii=False)
+
+
+def load_kg_checkpoint(path: str) -> Tuple[List[Dict], List[Dict], int]:
+    """Load KG checkpoint. Returns (entities, relations, done_count)."""
+    if not Path(path).exists():
+        return [], [], 0
+    with open(path, "r") as f:
+        ckpt = json.load(f)
+    return ckpt.get("entities", []), ckpt.get("relations", []), ckpt.get("done_count", 0)
 
 
 def merge_entities(entities: List[Dict]) -> List[Dict]:
@@ -268,7 +347,10 @@ def build_entity_faiss(
         return index
 
     # Encode
-    embeddings = embedding_model.encode(texts, normalize_embeddings=True)
+    from tqdm import tqdm
+    pbar = tqdm(total=len(texts), desc="Encoding entities", unit="ent")
+    embeddings = embedding_model.encode(texts, normalize_embeddings=True, progress_bar=pbar)
+    pbar.close()
     embeddings = np.array(embeddings, dtype="float32")
 
     # Build index

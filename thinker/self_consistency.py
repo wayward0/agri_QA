@@ -10,6 +10,7 @@ Tests mock this import for isolation.
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 
 from models import ReasoningChain
@@ -230,15 +231,21 @@ def generate_with_consistency(
             temperature=temperatures[0],
         )
     else:
-        # Multiple paths — self-consistency selection
-        candidates = []
-        for i in range(n_samples):
+        # Multiple paths — parallel self-consistency generation
+        def _generate_one(i: int) -> ReasoningChain:
             temp = temperatures[i] if i < len(temperatures) else temperatures[-1]
-            chain = generate_react_chain(
+            return generate_react_chain(
                 question, answer, rag_tool, llm_call,
                 temperature=temp,
             )
-            candidates.append(chain)
+
+        with ThreadPoolExecutor(max_workers=n_samples) as executor:
+            futures = {executor.submit(_generate_one, i): i for i in range(n_samples)}
+            candidates = [None] * n_samples
+            for future in as_completed(futures):
+                idx = futures[future]
+                candidates[idx] = future.result()
+
         chain = _select_best(candidates, question=question, answer=answer, llm_call=llm_call)
 
     # Socratic self-challenge on the selected chain

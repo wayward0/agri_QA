@@ -31,6 +31,7 @@ class EmbeddingClient:
         texts: List[str],
         normalize_embeddings: bool = True,
         batch_size: int = 16,
+        progress_bar=None,
     ) -> List[List[float]]:
         """Encode texts to embeddings. Compatible with SentenceTransformer.encode().
 
@@ -38,6 +39,7 @@ class EmbeddingClient:
             texts: List of strings to embed.
             normalize_embeddings: Ignored (API handles normalization).
             batch_size: Batch size for API calls.
+            progress_bar: Optional tqdm instance; updated per batch.
 
         Returns:
             List of embedding vectors.
@@ -51,4 +53,6 @@ class EmbeddingClient:
             )
             for item in response.data:
                 all_embeddings.append(item.embedding)
+            if progress_bar is not None:
+                progress_bar.update(len(batch))
         return all_embeddings

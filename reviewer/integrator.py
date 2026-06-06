@@ -6,6 +6,7 @@ Also provides run_review() convenience function for the full review pipeline.
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional, Tuple
 
 from models import (
@@ -218,16 +219,20 @@ def run_review(
         Tuple of (unified_actions, critique_history).
     """
     critiques = []
-
-    # Phase A: logic + semantic alignment (always run)
-    logic_critique = review_logic(chain, llm_call, answer=answer)
-    critiques.append(logic_critique)
-
-    # Phase B: Medium and Hard
     external_critique = None
+
     if difficulty in (DifficultyLevel.MEDIUM, DifficultyLevel.HARD):
-        external_critique = review_external(chain, question, rag_tool, llm_call)
-        critiques.append(external_critique)
+        # Phase A + B in parallel (independent inputs)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_a = executor.submit(review_logic, chain, llm_call, answer=answer)
+            future_b = executor.submit(review_external, chain, question, rag_tool, llm_call)
+            logic_critique = future_a.result()
+            external_critique = future_b.result()
+        critiques.extend([logic_critique, external_critique])
+    else:
+        # EASY: only Phase A
+        logic_critique = review_logic(chain, llm_call, answer=answer)
+        critiques.append(logic_critique)
 
     # Phase C: integration — include evaluator feedback when available
     unified = integrate_critiques(

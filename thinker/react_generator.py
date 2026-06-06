@@ -200,7 +200,7 @@ def generate_react_chain(
             prompt,
             system=REACT_SYSTEM_PROMPT,
             temperature=temperature,
-            max_tokens=2048,
+            max_tokens=4096,
         )
         thought, action = _parse_react_response(response)
         thoughts.append(thought)

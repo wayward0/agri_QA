@@ -906,10 +906,12 @@ def hierarchical_chunk(
     Returns:
         List of passage dicts: [{id, text, article_title, section_title, passage_index}]
     """
+    from tqdm import tqdm
+
     passages = []
     passage_id = 0
 
-    for article in articles:
+    for article in tqdm(articles, desc="Chunking articles", unit="article"):
         sections = article.get("sections", [])
         if not sections:
             sections = [{"title": "Main", "text": article["content"]}]
@@ -984,11 +986,15 @@ def build_faiss_index(
     Returns:
         FAISS index.
     """
+    from tqdm import tqdm
+
     if embedding_model is None:
         raise ValueError("embedding_model is required")
 
     texts = [p["text"] for p in passages]
-    embeddings = embedding_model.encode(texts, normalize_embeddings=True)
+    pbar = tqdm(total=len(texts), desc="Embedding passages", unit="doc")
+    embeddings = embedding_model.encode(texts, normalize_embeddings=True, progress_bar=pbar)
+    pbar.close()
     embeddings = np.array(embeddings, dtype="float32")
 
     index = faiss.IndexFlatIP(dim)
@@ -1010,7 +1016,9 @@ def build_bm25_index(passages: List[Dict], output_path: Optional[str] = None):
     Returns:
         BM25Okapi model.
     """
-    tokenized = [p["text"].lower().split() for p in passages]
+    from tqdm import tqdm
+
+    tokenized = [p["text"].lower().split() for p in tqdm(passages, desc="Tokenizing for BM25", unit="doc")]
     bm25 = BM25Okapi(tokenized)
 
     if output_path:
@@ -1022,8 +1030,10 @@ def build_bm25_index(passages: List[Dict], output_path: Optional[str] = None):
 
 def save_metadata(passages: List[Dict], output_path: str):
     """Save passage metadata for retrieval results."""
+    from tqdm import tqdm
+
     metadata = []
-    for p in passages:
+    for p in tqdm(passages, desc="Saving metadata", unit="doc"):
         metadata.append({
             "id": p["id"],
             "article_title": p["article_title"],
